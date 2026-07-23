@@ -26,8 +26,9 @@ function checkDbStatus() {
 let activeSessionsTab = "upcoming";
 
 const defaultRequests = [];
+let sessions = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // 0. Check Database instance status
     checkDbStatus();
 
@@ -39,15 +40,32 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('headerUserAvatar').textContent = (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
     }
 
-    // 2. Initialize requests from LocalStorage & upgrade if necessary
-    let existingReqs = localStorage.getItem("session_requests");
-    if (!existingReqs || (JSON.parse(existingReqs).length > 0 && JSON.parse(existingReqs)[0].id === 201)) {
-        localStorage.setItem("session_requests", JSON.stringify([]));
+    // 2. Fetch sessions from backend
+    await fetchMySessions();
+});
+
+async function fetchMySessions() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) return;
+
+    try {
+        const response = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': user.id
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            sessions = data.requests;
+        }
+    } catch (err) {
+        console.error("Error fetching sessions:", err);
+        sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
     }
 
-    // 3. Load and render sessions list
     renderMySessions();
-});
+}
 
 // Toggle Sessions Tabs
 function selectSessionsTab(e, tabName) {
@@ -62,7 +80,6 @@ function selectSessionsTab(e, tabName) {
 // Render Scheduled Sessions Feed
 function renderMySessions() {
     const container = document.getElementById("sessionsFeedContainer");
-    const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
     if (!currentUser) {
@@ -71,7 +88,7 @@ function renderMySessions() {
     }
 
     // Filter sessions belonging to the current user (either sender or recipient)
-    const mySessions = sessions.filter(s => s.senderId === currentUser.id || s.recipientId === currentUser.id);
+    const mySessions = sessions.filter(s => s.senderId == currentUser.id || s.recipientId == currentUser.id);
 
     // Calculate tab stats
     const upcomingCount = mySessions.filter(s => s.status === 'accepted').length;
@@ -98,8 +115,8 @@ function renderMySessions() {
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-light); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius)">
                 <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📖</div>
-                <h3>No sessions found under this tab.</h3>
-                <p style="font-size: 0.85rem; margin-top: 0.2rem;">Sessions that are scheduled, finished, or closed will show here.</p>
+                <h3>No sessions found in this category.</h3>
+                <p style="font-size: 0.85rem; margin-top: 0.2rem;">Scheduled classes will be listed here.</p>
             </div>
         `;
         return;
@@ -115,7 +132,7 @@ function renderMySessions() {
         const formattedDate = dateObj.toLocaleDateString('en-US', options);
 
         // Determine Teacher and Role label based on IDs
-        const isOutgoing = session.senderId === currentUser.id;
+        const isOutgoing = session.senderId == currentUser.id;
         const partnerName = isOutgoing ? session.recipientName : session.senderName;
         const partnerAvatar = isOutgoing ? session.recipientAvatar : session.senderAvatar;
         const teacherName = isOutgoing ? session.recipientName : "You (Teaching)";
@@ -128,55 +145,49 @@ function renderMySessions() {
         if (session.status === "rejected" || session.status === "cancelled") badgeClass = "cancelled";
 
         // Start button / text layout
-        let actionMarkup = "";
-        if (activeSessionsTab === "upcoming") {
+        let actionAreaMarkup = "";
+        if (session.status === "accepted") {
+            // Verify if schedule hour reached
             const sessionDateStr = session.date;
             const startTimeStr = session.time.split(" - ")[0];
             const scheduledDateTime = new Date(`${sessionDateStr}T${startTimeStr}:00`);
-            const isBeforeTime = new Date() < scheduledDateTime;
+            const isReady = new Date() >= scheduledDateTime;
 
-            if (isOutgoing && isBeforeTime) {
-                actionMarkup = `
-                    <button class="btn-start-session disabled-waiting" onclick="startSession(${session.id})" style="background:#cbd5e1; color:#64748b; cursor:not-allowed; box-shadow:none;">🕒 Waiting for time</button>
+            if (!isReady) {
+                actionAreaMarkup = `
+                    <button class="btn-start-session disabled-waiting" onclick="startSession('${session.id}')" style="background:#cbd5e1; color:#64748b; cursor:not-allowed; box-shadow:none;">🕒 Waiting for time</button>
                 `;
             } else {
-                actionMarkup = `
-                    <button class="btn-start-session" onclick="startSession(${session.id})">💻 Start Session</button>
+                actionAreaMarkup = `
+                    <button class="btn-start-session" onclick="startSession('${session.id}')">💻 Start Session</button>
                 `;
             }
         } else {
-            actionMarkup = `<span style="font-size:0.8rem; color:var(--text-light); font-style:italic;">Session locked</span>`;
+            actionAreaMarkup = `
+                <span style="font-size: 0.85rem; font-weight:600; color: var(--text-light); text-transform:capitalize;">Status: ${session.status}</span>
+            `;
         }
 
         card.innerHTML = `
-            <div class="mysession-header">
-                <img src="${partnerAvatar}" alt="${partnerName}" class="mysession-avatar">
-                <div class="mysession-title-block">
-                    <h3>${partnerName}</h3>
-                    <div class="mysession-role-txt">${roleLabel}: <span>${session.skill}</span></div>
+            <div class="card-left">
+                <img src="${partnerAvatar}" alt="${partnerName}" class="partner-avatar">
+                <div class="session-main-meta">
+                    <div class="session-header-badge">${roleLabel}</div>
+                    <h3>${session.skill}</h3>
+                    <div class="partner-role-line">
+                        <span>Teacher: <strong>${teacherName}</strong></span>
+                        <span style="margin: 0 8px; color:var(--border)">|</span>
+                        <span>Learner: <strong>${learnerName}</strong></span>
+                    </div>
+                    <div class="schedule-line">
+                        <span>🕒</span>
+                        <span>${formattedDate} &nbsp;at&nbsp; <strong>${session.time}</strong></span>
+                    </div>
                 </div>
             </div>
-
-            <div class="mysession-schedule-box">
-                <div>
-                    <span class="schedule-icon">📅</span>
-                    <span>${formattedDate}</span>
-                </div>
-                <div>
-                    <span class="schedule-icon">🕒</span>
-                    <span>${session.time}</span>
-                </div>
-                <div style="margin-top:0.4rem; font-weight:600;">
-                    <span>👤 Teacher:</span> &nbsp; <span>${teacherName}</span>
-                </div>
-                <div style="font-weight:600;">
-                    <span>👤 Learner:</span> &nbsp; <span>${learnerName}</span>
-                </div>
-            </div>
-
-            <div class="mysession-footer">
-                <span class="session-status ${badgeClass}">${session.status}</span>
-                ${actionMarkup}
+            <div class="card-right">
+                <span class="status-badge-indicator ${badgeClass}">${session.status}</span>
+                ${actionAreaMarkup}
             </div>
         `;
 
@@ -186,11 +197,10 @@ function renderMySessions() {
 
 // Redirect to Jitsi Session call room passing session ID
 function startSession(sessionId) {
-    const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
     const session = sessions.find(s => s.id == sessionId);
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
-    if (session && currentUser && session.senderId === currentUser.id) {
+    if (session && currentUser && session.senderId == currentUser.id) {
         const sessionDateStr = session.date;
         const startTimeStr = session.time.split(" - ")[0];
         const scheduledDateTime = new Date(`${sessionDateStr}T${startTimeStr}:00`);
