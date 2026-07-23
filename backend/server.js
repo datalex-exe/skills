@@ -40,6 +40,12 @@ const profileRoutes = require('./routes/profileRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 
+// Database instance status (detect database resets/recreations)
+const { dbInstanceId } = require('./config/db');
+app.get('/api/status', (req, res) => {
+    res.json({ success: true, dbInstanceId });
+});
+
 // Serve HTML files from HTML directory
 app.use(express.static(path.join(frontendDir, 'html')));
 
