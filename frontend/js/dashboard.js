@@ -10,6 +10,30 @@ function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
 
+// Setup Socket.IO real-time connection
+function initRealtimeNotifications(userId) {
+    const script = document.createElement('script');
+    script.src = '/socket.io/socket.io.js';
+    script.onload = () => {
+        if (typeof io !== 'undefined') {
+            const socket = io();
+            socket.emit('register', userId);
+            
+            socket.on('session_start_notification', (session) => {
+                console.log("🔔 Real-time Notification: Session starting!", session);
+                alert(`🔔 Real-time Notification: Your session "${session.skill}" is starting now! Click OK to join.`);
+                window.location.reload();
+            });
+
+            socket.on('session_status_update', (data) => {
+                console.log("🔔 Real-time Notification: Session request status updated:", data);
+                window.location.reload();
+            });
+        }
+    };
+    document.head.appendChild(script);
+}
+
 // ========== ANIMATED COUNTERS ==========
 function animateCounter(element, target, duration = 1500) {
     const start = 0;
@@ -288,6 +312,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('headerUserAvatar').textContent = (currentUser.firstName.charAt(0) + currentUser.lastName.charAt(0)).toUpperCase();
     document.getElementById('greetingName').textContent = `${currentUser.firstName} ${currentUser.lastName} 👋`;
 
+    // Initialize Real-time Notification Sockets
+    initRealtimeNotifications(currentUser.id);
+
     let skillsTeachCount = 0;
     let skillsLearnCount = 0;
     
@@ -482,30 +509,46 @@ document.addEventListener('DOMContentLoaded', async function() {
         animateCounter(el, targets[i]);
     });
 
-    // Load upcoming session from LocalStorage
-    const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const upcoming = sessions.find(s => s.status === 'accepted');
+    // Fetch upcoming sessions from SQLite backend
     const upcomingSessionContent = document.getElementById('upcomingSessionContent');
     if (upcomingSessionContent) {
-        if (upcoming) {
-            const initials = (upcoming.name.charAt(0) + (upcoming.name.split(' ')[1]?.charAt(0) || '')).toUpperCase();
-            upcomingSessionContent.innerHTML = `
-                <div class="session-avatar">${initials}</div>
-                <div class="session-info">
-                    <div class="session-title">${upcoming.skill}</div>
-                    <div class="session-teacher">with ${upcoming.name}</div>
-                    <div class="session-time">
-                        <span>📅 ${upcoming.date}</span>
-                        <span>⏱ ${upcoming.time}</span>
+        try {
+            const sessionsResponse = await fetch('/api/profile/active-sessions', {
+                method: 'GET',
+                headers: {
+                    'X-User-Id': currentUser.id
+                }
+            });
+            const sessionsData = await sessionsResponse.json();
+            if (sessionsResponse.ok && sessionsData.success && sessionsData.sessions.length > 0) {
+                const upcoming = sessionsData.sessions[0]; // get the most recent active/scheduled session
+                const initials = (upcoming.partnerName.charAt(0) + (upcoming.partnerName.split(' ')[1]?.charAt(0) || '')).toUpperCase();
+                
+                upcomingSessionContent.innerHTML = `
+                    <div class="session-avatar">${initials}</div>
+                    <div class="session-info">
+                        <div class="session-title">${upcoming.skill}</div>
+                        <div class="session-teacher">${upcoming.isOutgoing ? 'with' : 'for'} ${upcoming.partnerName}</div>
+                        <div class="session-time">
+                            <span>📅 ${upcoming.date}</span>
+                            <span>⏱ ${upcoming.time}</span>
+                        </div>
                     </div>
-                </div>
-                <button class="btn-join" onclick="window.open('session-room.html', '_blank')">
-                    <span>▶</span>
-                    <span>Join Session</span>
-                    <span>→</span>
-                </button>
-            `;
-        } else {
+                    <button class="btn-join" onclick="window.location.href='session-room.html?id=${upcoming.requestId}'">
+                        <span>▶</span>
+                        <span>Join Session</span>
+                        <span>→</span>
+                    </button>
+                `;
+            } else {
+                upcomingSessionContent.innerHTML = `
+                    <div style="font-size:0.85rem;color:#94A3B8;font-style:italic;padding:20px 0;text-align:center;width:100%;">
+                        No upcoming sessions scheduled.
+                    </div>
+                `;
+            }
+        } catch (sessionsErr) {
+            console.error('Error fetching active sessions:', sessionsErr);
             upcomingSessionContent.innerHTML = `
                 <div style="font-size:0.85rem;color:#94A3B8;font-style:italic;padding:20px 0;text-align:center;width:100%;">
                     No upcoming sessions scheduled.
