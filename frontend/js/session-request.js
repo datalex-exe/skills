@@ -27,8 +27,9 @@ function checkDbStatus() {
 const defaultRequests = [];
 
 let activeTab = "incoming";
+let requests = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // 0. Check Database instance status
     checkDbStatus();
 
@@ -40,61 +41,68 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('headerUserAvatar').textContent = (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
     }
 
-    // 2. Initialize requests from LocalStorage & upgrade if necessary
-    let existingReqs = localStorage.getItem("session_requests");
-    let requests = [];
-    try {
-        requests = existingReqs ? JSON.parse(existingReqs) : [];
-        if (!Array.isArray(requests)) requests = [];
-    } catch (e) {
-        requests = [];
-    }
-
-    // Clear old format or empty mock requests
-    if (requests.length > 0 && (!requests[0].senderId || requests[0].id === 201 || requests[0].id === 101)) {
-        requests = [];
-    }
-
-    // Seed default incoming requests if this user has no requests at all (sender or receiver)
-    if (user) {
-        const hasUserRequests = requests.some(r => r.senderId === user.id || r.recipientId === user.id);
-        if (!hasUserRequests) {
-            const mockIncoming = [
-                {
-                    id: Date.now() - 1000,
-                    senderId: 999,
-                    senderName: "Anjali Verma",
-                    senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
-                    recipientId: user.id,
-                    recipientName: `${user.firstName} ${user.lastName}`,
-                    recipientAvatar: user.avatar || "../images/avatar1.jpg",
-                    skill: "Web Development",
-                    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    time: "14:00 - 15:00",
-                    status: "pending"
-                },
-                {
-                    id: Date.now() - 2000,
-                    senderId: 998,
-                    senderName: "Kabir Kapoor",
-                    senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
-                    recipientId: user.id,
-                    recipientName: `${user.firstName} ${user.lastName}`,
-                    recipientAvatar: user.avatar || "../images/avatar1.jpg",
-                    skill: "UI/UX Design",
-                    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    time: "16:00 - 17:00",
-                    status: "pending"
-                }
-            ];
-            requests.push(...mockIncoming);
-        }
-    }
-    localStorage.setItem("session_requests", JSON.stringify(requests));
-
-    // 3. Render requests
-    renderRequests();
+    // 2. Fetch and render requests from database
+    await fetchSessionRequests();
 });
+
+// Fetch session requests from backend SQLite
+async function fetchSessionRequests() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) return;
+
+    try {
+        const response = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': user.id
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            requests = data.requests;
+            
+            // Seed default incoming requests if this user has no requests at all (sender or receiver) in the DB
+            const hasUserRequests = requests.some(r => r.senderId == user.id || r.recipientId == user.id);
+            if (!hasUserRequests) {
+                const mockIncoming = [
+                    {
+                        id: Date.now() - 1000,
+                        senderId: 999,
+                        senderName: "Anjali Verma",
+                        senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
+                        recipientId: user.id,
+                        recipientName: `${user.firstName} ${user.lastName}`,
+                        recipientAvatar: user.avatar || "../images/avatar1.jpg",
+                        skill: "Web Development",
+                        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        time: "14:00 - 15:00",
+                        status: "pending"
+                    },
+                    {
+                        id: Date.now() - 2000,
+                        senderId: 998,
+                        senderName: "Kabir Kapoor",
+                        senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
+                        recipientId: user.id,
+                        recipientName: `${user.firstName} ${user.lastName}`,
+                        recipientAvatar: user.avatar || "../images/avatar1.jpg",
+                        skill: "UI/UX Design",
+                        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        time: "16:00 - 17:00",
+                        status: "pending"
+                    }
+                ];
+                requests.push(...mockIncoming);
+            }
+        }
+    } catch (err) {
+        console.error("Error fetching session requests:", err);
+        // Fallback to local storage
+        requests = JSON.parse(localStorage.getItem("session_requests")) || [];
+    }
+
+    renderRequests();
+}
 
 // Tab navigation handler
 function selectTab(e, tabName) {
@@ -109,7 +117,6 @@ function selectTab(e, tabName) {
 // Render Request cards
 function renderRequests() {
     const listContainer = document.getElementById("sessionsList");
-    const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
     if (!currentUser) {
@@ -118,9 +125,9 @@ function renderRequests() {
     }
 
     // Update Counts
-    const incomingCount = requests.filter(r => r.recipientId === currentUser.id && r.status === "pending").length;
-    const outgoingCount = requests.filter(r => r.senderId === currentUser.id && r.status === "pending").length;
-    const scheduledCount = requests.filter(r => r.status === "accepted" && (r.senderId === currentUser.id || r.recipientId === currentUser.id)).length;
+    const incomingCount = requests.filter(r => r.recipientId == currentUser.id && r.status === "pending").length;
+    const outgoingCount = requests.filter(r => r.senderId == currentUser.id && r.status === "pending").length;
+    const scheduledCount = requests.filter(r => r.status === "accepted" && (r.senderId == currentUser.id || r.recipientId == currentUser.id)).length;
 
     document.getElementById("incomingCount").textContent = incomingCount;
     document.getElementById("outgoingCount").textContent = outgoingCount;
@@ -131,11 +138,11 @@ function renderRequests() {
     // Filter by active tab
     let filtered = [];
     if (activeTab === "incoming") {
-        filtered = requests.filter(r => r.recipientId === currentUser.id && r.status === "pending");
+        filtered = requests.filter(r => r.recipientId == currentUser.id && r.status === "pending");
     } else if (activeTab === "outgoing") {
-        filtered = requests.filter(r => r.senderId === currentUser.id && r.status === "pending");
+        filtered = requests.filter(r => r.senderId == currentUser.id && r.status === "pending");
     } else if (activeTab === "scheduled") {
-        filtered = requests.filter(r => r.status === "accepted" && (r.senderId === currentUser.id || r.recipientId === currentUser.id));
+        filtered = requests.filter(r => r.status === "accepted" && (r.senderId == currentUser.id || r.recipientId == currentUser.id));
     }
 
     if (filtered.length === 0) {
@@ -158,7 +165,7 @@ function renderRequests() {
         const options = { weekday: 'short', month: 'short', day: 'numeric' };
         const formattedDate = dateObj.toLocaleDateString('en-US', options);
 
-        const isIncoming = req.recipientId === currentUser.id;
+        const isIncoming = req.recipientId == currentUser.id;
         const partnerName = isIncoming ? req.senderName : req.recipientName;
         const partnerAvatar = isIncoming ? req.senderAvatar : req.recipientAvatar;
 
@@ -169,14 +176,14 @@ function renderRequests() {
         let actionMarkup = "";
         if (activeTab === "incoming") {
             actionMarkup = `
-                <button class="btn-action-accept" onclick="updateStatus(${req.id}, 'accepted')">Accept</button>
-                <button class="btn-action-reject" onclick="updateStatus(${req.id}, 'rejected')">Decline</button>
+                <button class="btn-action-accept" onclick="updateStatus('${req.id}', 'accepted')">Accept</button>
+                <button class="btn-action-reject" onclick="updateStatus('${req.id}', 'rejected')">Decline</button>
             `;
         } else if (activeTab === "outgoing") {
             actionMarkup = `<span class="status-badge pending">Pending</span>`;
         } else if (activeTab === "scheduled") {
             actionMarkup = `
-                <button class="btn-action-meeting" onclick="launchMeeting(${req.id})">💻 Launch Call</button>
+                <button class="btn-action-meeting" onclick="launchMeeting('${req.id}')">💻 Launch Call</button>
             `;
         }
 
@@ -208,28 +215,52 @@ function updateStatus(reqId, newStatus) {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const index = requests.findIndex(r => r.id == reqId);
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
 
-    if (index !== -1) {
-        requests[index].status = newStatus;
+    const req = requests.find(r => r.id == reqId);
+    if (!req) return;
+
+    fetch('/api/profile/session-requests/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({
+            reqId: reqId,
+            status: newStatus
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            req.status = newStatus;
+            const partnerName = req.recipientId == currentUser.id ? req.senderName : req.recipientName;
+            alert(`Session Request from ${partnerName} declined.`);
+            fetchSessionRequests();
+        } else {
+            alert(data.message || "Failed to update session request status.");
+        }
+    })
+    .catch(err => {
+        console.error("Error updating session request:", err);
+        // Fallback locally
+        req.status = newStatus;
         localStorage.setItem("session_requests", JSON.stringify(requests));
-
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        const partnerName = requests[index].recipientId === currentUser.id ? requests[index].senderName : requests[index].recipientName;
-        alert(`Session Request from ${partnerName} declined.`);
+        const partnerName = req.recipientId == currentUser.id ? req.senderName : req.recipientName;
+        alert(`[Offline] Session Request from ${partnerName} declined.`);
         renderRequests();
-    }
+    });
 }
 
 // Modal management
 function openScheduleModal(reqId) {
-    const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
     const req = requests.find(r => r.id == reqId);
     if (!req) return;
 
     const currentUser = JSON.parse(localStorage.getItem('user'));
-    const isIncoming = req.recipientId === currentUser.id;
+    const isIncoming = req.recipientId == currentUser.id;
     const partnerName = isIncoming ? req.senderName : req.recipientName;
     const partnerAvatar = isIncoming ? req.senderAvatar : req.recipientAvatar;
 
@@ -266,7 +297,7 @@ function closeScheduleModal() {
 function confirmSchedule(event) {
     event.preventDefault();
 
-    const reqId = parseInt(document.getElementById("modalReqId").value, 10);
+    const reqId = document.getElementById("modalReqId").value;
     const selectedDate = document.getElementById("scheduleDateInput").value;
     const startTime = document.getElementById("scheduleStartTimeInput").value;
     const endTime = document.getElementById("scheduleEndTimeInput").value;
@@ -277,22 +308,54 @@ function confirmSchedule(event) {
     }
 
     const formattedTimeRange = `${startTime} - ${endTime}`;
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
 
-    const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const index = requests.findIndex(r => r.id == reqId);
-
-    if (index !== -1) {
-        requests[index].status = "accepted";
-        requests[index].date = selectedDate;
-        requests[index].time = formattedTimeRange;
-        localStorage.setItem("session_requests", JSON.stringify(requests));
-
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        const partnerName = requests[index].recipientId === currentUser.id ? requests[index].senderName : requests[index].recipientName;
-        alert(`Session Scheduled with ${partnerName} for ${selectedDate} at ${formattedTimeRange}!`);
+    fetch('/api/profile/session-requests/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({
+            reqId: reqId,
+            status: "accepted",
+            date: selectedDate,
+            time: formattedTimeRange
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const req = requests.find(r => r.id == reqId);
+            if (req) {
+                req.status = "accepted";
+                req.date = selectedDate;
+                req.time = formattedTimeRange;
+            }
+            const partnerName = req && req.recipientId == currentUser.id ? req.senderName : (req ? req.recipientName : "Partner");
+            alert(`Session Scheduled with ${partnerName} for ${selectedDate} at ${formattedTimeRange}!`);
+            closeScheduleModal();
+            fetchSessionRequests();
+        } else {
+            alert(data.message || "Failed to confirm schedule.");
+        }
+    })
+    .catch(err => {
+        console.error("Error scheduling session:", err);
+        // Local fallback
+        const req = requests.find(r => r.id == reqId);
+        if (req) {
+            req.status = "accepted";
+            req.date = selectedDate;
+            req.time = formattedTimeRange;
+            localStorage.setItem("session_requests", JSON.stringify(requests));
+            const partnerName = req.recipientId == currentUser.id ? req.senderName : req.recipientName;
+            alert(`[Offline] Session Scheduled with ${partnerName} for ${selectedDate} at ${formattedTimeRange}!`);
+        }
         closeScheduleModal();
         renderRequests();
-    }
+    });
 }
 
 // Redirect to meeting room
