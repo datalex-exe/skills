@@ -244,8 +244,29 @@ function animateWalletChart() {
     }
 }
 
+// Synchronously/Asynchronously verify database instance to clear stale requests on server restart
+function checkDbStatus() {
+    fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const localDbId = localStorage.getItem("db_instance_id");
+                if (localDbId && localDbId !== data.dbInstanceId) {
+                    console.log("🔄 Database reset detected. Resetting local session requests...");
+                    localStorage.removeItem("session_requests");
+                    window.location.reload();
+                }
+                localStorage.setItem("db_instance_id", data.dbInstanceId);
+            }
+        })
+        .catch(err => console.warn("Could not contact status endpoint:", err));
+}
+
 // ========== INIT ALL ==========
 document.addEventListener('DOMContentLoaded', async function() {
+    // Check Database instance status
+    checkDbStatus();
+
     // Entrance animations for static shell elements
     animateHero();
     animateSideCards();
