@@ -107,6 +107,7 @@ const mockPeople = [
 
 let selectedCategory = "all";
 let activeProfilesList = [];
+let savedRequests = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     // 0. Check Database instance status
@@ -130,6 +131,22 @@ async function fetchProfiles(searchQuery = "") {
     const userId = user ? user.id : 0;
 
     try {
+        const reqsResponse = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': userId
+            }
+        });
+        const reqsData = await reqsResponse.json();
+        if (reqsResponse.ok && reqsData.success) {
+            savedRequests = reqsData.requests;
+        }
+    } catch (err) {
+        console.warn("Could not fetch session requests from backend, falling back to local storage cache:", err);
+        savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
+    }
+
+    try {
         const response = await fetch(`/api/profile/search?query=${encodeURIComponent(searchQuery)}`, {
             method: 'GET',
             headers: {
@@ -138,7 +155,7 @@ async function fetchProfiles(searchQuery = "") {
         });
         
         const data = await response.json();
-        if (response.ok && data.success) {
+        if (response.ok && data.success && data.profiles && data.profiles.length > 0) {
             activeProfilesList = data.profiles;
         } else {
             fallbackSearch(searchQuery);
@@ -234,9 +251,6 @@ function renderPeople() {
         return;
     }
 
-    // Retrieve already sent requests from localStorage
-    const savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
-
     filtered.forEach(person => {
         const card = document.createElement("div");
         card.className = "person-card";
@@ -285,7 +299,7 @@ function renderPeople() {
                 <div class="cost-rate">
                     <span>1</span> Credit/hr
                 </div>
-                <button class="${btnClass}" ${btnDisabled} onclick="sendRequest(${person.id}, '${person.firstName} ${person.lastName}', '${person.skillsTeach[0]}', '${person.avatar}')">
+                <button class="${btnClass}" ${btnDisabled} onclick="sendRequest('${person.id}', '${person.firstName} ${person.lastName}', '${person.skillsTeach[0]}', '${person.avatar}')">
                     ${btnText}
                 </button>
             </div>
@@ -301,7 +315,6 @@ function sendRequest(personId, fullName, skill, avatar) {
     if (!currentUser) return;
 
     // Check duplicate first
-    const savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
     if (savedRequests.some(r => r.senderId == currentUser.id && r.recipientId == personId && r.status === 'pending')) {
         alert("A pending request was already sent to this user.");
         return;
@@ -368,8 +381,6 @@ function confirmBooking(event) {
 
     const formattedTimeRange = `${startTime} - ${endTime}`;
 
-    const savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    
     // Prevent double submission from concurrent clicks or race conditions
     if (savedRequests.some(r => r.senderId == currentUser.id && r.recipientId == personId && r.status === 'pending')) {
         alert("A pending request was already sent to this user.");
@@ -384,25 +395,42 @@ function confirmBooking(event) {
         submitBtn.textContent = "Sending...";
     }
 
-    // Create session request object
-    const newRequest = {
-        id: Date.now(),
-        senderId: currentUser.id,
-        senderName: `${currentUser.firstName} ${currentUser.lastName}`,
-        senderAvatar: currentUser.avatar || "../images/avatar1.jpg",
-        recipientId: personId,
-        recipientName: fullName,
-        recipientAvatar: avatar,
-        skill: skill,
-        date: selectedDate,
-        time: formattedTimeRange,
-        status: "pending"
-    };
-
-    savedRequests.push(newRequest);
-    localStorage.setItem("session_requests", JSON.stringify(savedRequests));
-
-    alert(`Session Request sent to ${fullName} for learning ${skill} on ${selectedDate} at ${formattedTimeRange}!`);
-    closeBookingModal();
-    renderPeople();
+    // Send request to backend
+    fetch('/api/profile/session-requests', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': currentUser.id
+        },
+        body: JSON.stringify({
+            recipientId: personId,
+            recipientName: fullName,
+            recipientAvatar: avatar,
+            skill: skill,
+            date: selectedDate,
+            time: formattedTimeRange
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Session Request sent to ${fullName} for learning ${skill} on ${selectedDate} at ${formattedTimeRange}!`);
+            closeBookingModal();
+            fetchProfiles(""); // Re-fetch to update button state
+        } else {
+            alert(data.message || "Failed to send session request.");
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Send Request";
+            }
+        }
+    })
+    .catch(err => {
+        console.error("Error sending session request:", err);
+        alert("Failed to connect to the server.");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Send Request";
+        }
+    });
 }
