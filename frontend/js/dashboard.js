@@ -304,13 +304,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         rating = 0.0;
     }
 
-    // Calculate completed sessions dynamically from local storage session requests
+    // Calculate completed sessions dynamically from backend session requests
     let completedSessions = 0;
     try {
-        const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
-        completedSessions = sessions.filter(s => s.status === 'completed').length;
+        const response = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': currentUser.id
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            completedSessions = data.requests.filter(s => s.status === 'completed').length;
+        }
     } catch (e) {
-        completedSessions = 0;
+        console.warn("Could not fetch session requests from backend, falling back to local storage:", e);
+        try {
+            const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
+            completedSessions = sessions.filter(s => s.status === 'completed').length;
+        } catch (localErr) {
+            completedSessions = 0;
+        }
     }
 
     try {
