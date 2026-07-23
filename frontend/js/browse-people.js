@@ -5,6 +5,24 @@
     }
 })();
 
+// Synchronously/Asynchronously verify database instance to clear stale requests on server restart
+function checkDbStatus() {
+    fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const localDbId = localStorage.getItem("db_instance_id");
+                if (localDbId && localDbId !== data.dbInstanceId) {
+                    console.log("🔄 Database reset detected. Resetting local session requests...");
+                    localStorage.removeItem("session_requests");
+                    window.location.reload();
+                }
+                localStorage.setItem("db_instance_id", data.dbInstanceId);
+            }
+        })
+        .catch(err => console.warn("Could not contact status endpoint:", err));
+}
+
 // Mock Data for Barter Learn Users
 const mockPeople = [
     {
@@ -91,6 +109,9 @@ let selectedCategory = "all";
 let activeProfilesList = [];
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. Check Database instance status
+    checkDbStatus();
+
     // 1. Sync User Header info
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
@@ -226,7 +247,7 @@ function renderPeople() {
         // Check if request was already sent to this person from the current user
         const currentUser = JSON.parse(localStorage.getItem('user'));
         const currentUserId = currentUser ? currentUser.id : null;
-        const isSent = savedRequests.some(r => r.senderId === currentUserId && r.recipientId === person.id && r.status === 'pending');
+        const isSent = savedRequests.some(r => r.senderId == currentUserId && r.recipientId == person.id && r.status === 'pending');
         const btnText = isSent ? "Request Sent" : "Send Session Request";
         const btnClass = isSent ? "btn-request sent" : "btn-request";
         const btnDisabled = isSent ? "disabled" : "";
@@ -281,7 +302,7 @@ function sendRequest(personId, fullName, skill, avatar) {
 
     // Check duplicate first
     const savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    if (savedRequests.some(r => r.senderId === currentUser.id && r.recipientId === personId && r.status === 'pending')) {
+    if (savedRequests.some(r => r.senderId == currentUser.id && r.recipientId == personId && r.status === 'pending')) {
         alert("A pending request was already sent to this user.");
         return;
     }
@@ -350,7 +371,7 @@ function confirmBooking(event) {
     const savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
     
     // Prevent double submission from concurrent clicks or race conditions
-    if (savedRequests.some(r => r.senderId === currentUser.id && r.recipientId === personId && r.status === 'pending')) {
+    if (savedRequests.some(r => r.senderId == currentUser.id && r.recipientId == personId && r.status === 'pending')) {
         alert("A pending request was already sent to this user.");
         closeBookingModal();
         return;
