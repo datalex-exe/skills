@@ -21,9 +21,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Initialize requests from LocalStorage & upgrade if necessary
     let existingReqs = localStorage.getItem("session_requests");
-    if (!existingReqs || (JSON.parse(existingReqs).length > 0 && (JSON.parse(existingReqs)[0].id === 201 || JSON.parse(existingReqs)[0].id === 101))) {
-        localStorage.setItem("session_requests", JSON.stringify([]));
+    let requests = [];
+    try {
+        requests = existingReqs ? JSON.parse(existingReqs) : [];
+        if (!Array.isArray(requests)) requests = [];
+    } catch (e) {
+        requests = [];
     }
+
+    // Clear old format or empty mock requests
+    if (requests.length > 0 && (!requests[0].senderId || requests[0].id === 201 || requests[0].id === 101)) {
+        requests = [];
+    }
+
+    // Seed default incoming requests if this user has no requests at all (sender or receiver)
+    if (user) {
+        const hasUserRequests = requests.some(r => r.senderId === user.id || r.recipientId === user.id);
+        if (!hasUserRequests) {
+            const mockIncoming = [
+                {
+                    id: Date.now() - 1000,
+                    senderId: 999,
+                    senderName: "Anjali Verma",
+                    senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
+                    recipientId: user.id,
+                    recipientName: `${user.firstName} ${user.lastName}`,
+                    recipientAvatar: user.avatar || "../images/avatar1.jpg",
+                    skill: "Web Development",
+                    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    time: "14:00 - 15:00",
+                    status: "pending"
+                },
+                {
+                    id: Date.now() - 2000,
+                    senderId: 998,
+                    senderName: "Kabir Kapoor",
+                    senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
+                    recipientId: user.id,
+                    recipientName: `${user.firstName} ${user.lastName}`,
+                    recipientAvatar: user.avatar || "../images/avatar1.jpg",
+                    skill: "UI/UX Design",
+                    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    time: "16:00 - 17:00",
+                    status: "pending"
+                }
+            ];
+            requests.push(...mockIncoming);
+        }
+    }
+    localStorage.setItem("session_requests", JSON.stringify(requests));
 
     // 3. Render requests
     renderRequests();
