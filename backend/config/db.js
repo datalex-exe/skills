@@ -209,6 +209,29 @@ function initializeDatabase() {
                 runMigrations();
             }
         });
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS session_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                sender_name TEXT NOT NULL,
+                sender_avatar TEXT DEFAULT '',
+                recipient_id INTEGER NOT NULL,
+                recipient_name TEXT NOT NULL,
+                recipient_avatar TEXT DEFAULT '',
+                skill TEXT NOT NULL,
+                date TEXT NOT NULL,
+                time TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `, (err) => {
+            if (err) {
+                console.error('❌ Error creating session_requests table:', err.message);
+            } else {
+                console.log('✔️ session_requests table initialized successfully.');
+            }
+        });
     });
 }
 
