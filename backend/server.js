@@ -54,7 +54,96 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(frontendDir, 'html', 'index.html'));
 });
 
-app.listen(PORT, () => {
+// Setup HTTP server and Socket.IO
+const http = require('http');
+const { Server } = require('socket.io');
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Bind io instance to express app context
+app.set('io', io);
+
+// Socket.IO event handler
+io.on('connection', (socket) => {
+  console.log(`🔌 Client connected: ${socket.id}`);
+
+  // Register user into their personal notification room
+  socket.on('register', (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+      console.log(`👤 User registered: user_${userId} (Socket: ${socket.id})`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+  });
+});
+
+// Background session schedule checker
+const { dbQuery } = require('./config/db');
+setInterval(async () => {
+  try {
+    const scheduledSessions = await dbQuery.all("SELECT * FROM sessions WHERE status = 'scheduled'");
+    const now = new Date();
+
+    for (const session of scheduledSessions) {
+      const sessionDateStr = session.date;
+      const startTimeStr = session.time.split(" - ")[0];
+      const scheduledTime = new Date(`${sessionDateStr}T${startTimeStr}:00`);
+
+      if (now >= scheduledTime) {
+        console.log(`⏰ Starting Session ${session.id}. Room ID: ${session.room_id}`);
+
+        // Update status in SQLite to active
+        await dbQuery.run("UPDATE sessions SET status = 'active' WHERE id = ?", [session.id]);
+
+        // Get full details to construct user payload
+        const updatedSession = await dbQuery.get(
+          `SELECT s.*, 
+                  u1.first_name as sender_first_name, u1.last_name as sender_last_name, u1.avatar as sender_avatar,
+                  u2.first_name as recipient_first_name, u2.last_name as recipient_last_name, u2.avatar as recipient_avatar
+           FROM sessions s
+           JOIN users u1 ON s.sender_id = u1.id
+           JOIN users u2 ON s.recipient_id = u2.id
+           WHERE s.id = ?`,
+          [session.id]
+        );
+
+        if (updatedSession) {
+          const payload = {
+            id: updatedSession.id,
+            requestId: updatedSession.request_id,
+            senderId: updatedSession.sender_id,
+            recipientId: updatedSession.recipient_id,
+            skill: updatedSession.skill,
+            date: updatedSession.date,
+            time: updatedSession.time,
+            roomId: updatedSession.room_id,
+            status: 'active',
+            senderName: `${updatedSession.sender_first_name} ${updatedSession.sender_last_name}`,
+            recipientName: `${updatedSession.recipient_first_name} ${updatedSession.recipient_last_name}`,
+            senderAvatar: updatedSession.sender_avatar,
+            recipientAvatar: updatedSession.recipient_avatar
+          };
+
+          // Notify sender and recipient via Socket.IO
+          io.to(`user_${session.sender_id}`).emit('session_start_notification', payload);
+          io.to(`user_${session.recipient_id}`).emit('session_start_notification', payload);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("❌ Scheduled checker error:", err);
+  }
+}, 10000); // Check every 10 seconds
+
+server.listen(PORT, () => {
   console.log(`================================================`);
   console.log(`🚀 Skill-for-Skill Server is running!`);
   console.log(`🔗 Local Server: http://localhost:${PORT}`);
