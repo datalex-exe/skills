@@ -5,12 +5,33 @@
     }
 })();
 
+// Synchronously/Asynchronously verify database instance to clear stale requests on server restart
+function checkDbStatus() {
+    fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const localDbId = localStorage.getItem("db_instance_id");
+                if (localDbId && localDbId !== data.dbInstanceId) {
+                    console.log("🔄 Database reset detected. Resetting local session requests...");
+                    localStorage.removeItem("session_requests");
+                    window.location.reload();
+                }
+                localStorage.setItem("db_instance_id", data.dbInstanceId);
+            }
+        })
+        .catch(err => console.warn("Could not contact status endpoint:", err));
+}
+
 // Default Session Requests if localStorage is empty
 const defaultRequests = [];
 
 let activeTab = "incoming";
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. Check Database instance status
+    checkDbStatus();
+
     // 1. Sync User Header info
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
@@ -188,7 +209,7 @@ function updateStatus(reqId, newStatus) {
     }
 
     const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const index = requests.findIndex(r => r.id === reqId);
+    const index = requests.findIndex(r => r.id == reqId);
 
     if (index !== -1) {
         requests[index].status = newStatus;
@@ -204,7 +225,7 @@ function updateStatus(reqId, newStatus) {
 // Modal management
 function openScheduleModal(reqId) {
     const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const req = requests.find(r => r.id === reqId);
+    const req = requests.find(r => r.id == reqId);
     if (!req) return;
 
     const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -258,7 +279,7 @@ function confirmSchedule(event) {
     const formattedTimeRange = `${startTime} - ${endTime}`;
 
     const requests = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const index = requests.findIndex(r => r.id === reqId);
+    const index = requests.findIndex(r => r.id == reqId);
 
     if (index !== -1) {
         requests[index].status = "accepted";
