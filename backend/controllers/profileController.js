@@ -150,7 +150,7 @@ exports.updateProfile = async (req, res) => {
 exports.completeSession = async (req, res) => {
     try {
         const userId = req.headers['x-user-id'];
-        const { sessionType, partnerName, skillName } = req.body;
+        const { sessionType, partnerName, skillName, sessionId } = req.body;
 
         if (!userId) {
             return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
@@ -199,6 +199,11 @@ exports.completeSession = async (req, res) => {
              WHERE id = ?`,
             [creditChange, JSON.stringify(recentActivity), userId]
         );
+
+        // Update session request status to completed
+        if (sessionId) {
+            await dbQuery.run('UPDATE session_requests SET status = "completed" WHERE id = ?', [sessionId]);
+        }
 
         // Fetch updated user to return fresh credit status
         const updatedUser = await dbQuery.get('SELECT credits_earned FROM users WHERE id = ?', [userId]);
@@ -256,6 +261,124 @@ exports.searchProfiles = async (req, res) => {
 
     } catch (error) {
         console.error('❌ Search Profiles Error:', error);
+        return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+    }
+};
+
+// Get Session Requests Controller
+exports.getSessionRequests = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
+        }
+
+        const requests = await dbQuery.all(
+            `SELECT * FROM session_requests WHERE sender_id = ? OR recipient_id = ? ORDER BY created_at DESC`,
+            [userId, userId]
+        );
+
+        const mappedRequests = requests.map(r => ({
+            id: r.id,
+            senderId: r.sender_id,
+            senderName: r.sender_name,
+            senderAvatar: r.sender_avatar,
+            recipientId: r.recipient_id,
+            recipientName: r.recipient_name,
+            recipientAvatar: r.recipient_avatar,
+            skill: r.skill,
+            date: r.date,
+            time: r.time,
+            status: r.status
+        }));
+
+        return res.status(200).json({
+            success: true,
+            requests: mappedRequests
+        });
+    } catch (error) {
+        console.error('❌ Get Session Requests Error:', error);
+        return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+    }
+};
+
+// Create Session Request Controller
+exports.createSessionRequest = async (req, res) => {
+    try {
+        const senderId = req.headers['x-user-id'];
+        const { recipientId, recipientName, recipientAvatar, skill, date, time } = req.body;
+
+        if (!senderId) {
+            return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
+        }
+
+        if (!recipientId || !recipientName || !skill || !date || !time) {
+            return res.status(400).json({ success: false, message: 'Missing required session request fields.' });
+        }
+
+        // Fetch sender's profile to get name and avatar
+        const sender = await dbQuery.get('SELECT first_name, last_name, avatar FROM users WHERE id = ?', [senderId]);
+        if (!sender) {
+            return res.status(404).json({ success: false, message: 'Sender not found.' });
+        }
+
+        const senderName = `${sender.first_name} ${sender.last_name}`;
+        const senderAvatar = sender.avatar || '../images/avatar1.jpg';
+
+        await dbQuery.run(
+            `INSERT INTO session_requests (sender_id, sender_name, sender_avatar, recipient_id, recipient_name, recipient_avatar, skill, date, time, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+            [senderId, senderName, senderAvatar, recipientId, recipientName, recipientAvatar || '../images/avatar1.jpg', skill, date, time]
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: 'Session request sent successfully!'
+        });
+    } catch (error) {
+        console.error('❌ Create Session Request Error:', error);
+        return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+    }
+};
+
+// Update Session Request Status Controller
+exports.updateSessionRequestStatus = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        const { reqId, status, date, time } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
+        }
+
+        if (!reqId || !status) {
+            return res.status(400).json({ success: false, message: 'Request ID and status are required.' });
+        }
+
+        // Check if request exists
+        const request = await dbQuery.get('SELECT * FROM session_requests WHERE id = ?', [reqId]);
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Session request not found.' });
+        }
+
+        if (status === 'accepted' && date && time) {
+            await dbQuery.run(
+                `UPDATE session_requests SET status = ?, date = ?, time = ? WHERE id = ?`,
+                [status, date, time, reqId]
+            );
+        } else {
+            await dbQuery.run(
+                `UPDATE session_requests SET status = ? WHERE id = ?`,
+                [status, reqId]
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Session request ${status} successfully!`
+        });
+    } catch (error) {
+        console.error('❌ Update Session Request Status Error:', error);
         return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
     }
 };
