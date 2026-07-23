@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarterLearn - Session Requests</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/session-request.css">
+</head>
+<body>
+    <!-- SVG Gradients Definition -->
+    <svg width="0" height="0" style="position:absolute">
+        <defs>
+            <linearGradient id="gradientPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#8B5CF6"/>
+                <stop offset="100%" style="stop-color:#A855F7"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-brand">
+                <div class="logo-icon">👥</div>
+                <div class="logo-text">
+                    <h1>BarterLearn</h1>
+                    <span>Skill for Skill, Grow Together</span>
+                </div>
+            </div>
+            <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+        </div>
+
+                        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span>My Profile</span>
+            </a>
+            <a href="browse-people.html" class="nav-item">
+                <span class="nav-icon">👥</span>
+                <span>Browse People</span>
+            </a>
+            <a href="session-request.html" class="nav-item active">
+                <span class="nav-icon">📅</span>
+                <span>Session Requests</span>
+            </a>
+            <a href="my-sessions.html" class="nav-item">
+                <span class="nav-icon">📖</span>
+                <span>My Sessions</span>
+            </a>
+            <a href="credits.html" class="nav-item">
+                <span class="nav-icon">💰</span>
+                <span>Time Wallet</span>
+            </a>
+            <a href="messages.html" class="nav-item">
+                <span class="nav-icon">✉️</span>
+                <span>Messages</span>
+            </a>
+            <a href="reviews.html" class="nav-item">
+                <span class="nav-icon">⭐</span>
+                <span>Reviews</span>
+            </a>
+            <a href="settings.html" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-illustration">
+            <svg viewBox="0 0 180 140" style="width:100%;max-width:180px">
+                <circle cx="90" cy="70" r="60" fill="url(#grad1)" opacity="0.3"/>
+            </svg>
+        </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="main">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="welcome-text">
+                <h2>Manage Sessions</h2>
+                <h1>Session Requests 📅</h1>
+                <p>Accept peer requests to teach or review your sent requests.</p>
+            </div>
+            <div class="top-actions">
+                <div class="search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Search sessions...">
+                </div>
+                <button class="icon-btn">
+                    🔔
+                </button>
+                <button class="icon-btn">
+                    💬
+                </button>
+                <div class="user-profile">
+                    <div class="user-avatar" id="headerUserAvatar">VT</div>
+                    <div class="user-info">
+                        <div class="name" id="headerUserName">Vanshika</div>
+                        <div class="role" id="headerUserRole">Learner</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Tabs Header -->
+        <div class="session-tab-header">
+            <button class="session-tab-btn active" onclick="selectTab(event, 'incoming')">Incoming Requests <span class="badge-count" id="incomingCount">2</span></button>
+            <button class="session-tab-btn" onclick="selectTab(event, 'outgoing')">Outgoing Requests <span class="badge-count" id="outgoingCount">1</span></button>
+            <button class="session-tab-btn" onclick="selectTab(event, 'scheduled')">Scheduled Sessions <span class="badge-count" id="scheduledCount">3</span></button>
+        </div>
+
+        <!-- Sessions Main Display Container -->
+        <div class="sessions-list" id="sessionsList">
+            <!-- Loaded dynamically via JS -->
+        </div>
+    </main>
+
+    <!-- Fix Schedule Modal -->
+    <div id="scheduleModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Fix Session Schedule</h3>
+                <button class="modal-close-btn" onclick="closeScheduleModal()">&times;</button>
+            </div>
+            <div class="modal-session-summary">
+                <img id="modalPartnerAvatar" src="" alt="" class="modal-partner-avatar">
+                <div class="modal-partner-info">
+                    <h4 id="modalPartnerName">Partner Name</h4>
+                    <p id="modalSessionSkillLabel">Wants to learn <span>Skill Name</span></p>
+                </div>
+            </div>
+            <form id="scheduleForm" onsubmit="confirmSchedule(event)">
+                <input type="hidden" id="modalReqId">
+                <div class="modal-form-group">
+                    <label for="scheduleDateInput">📅 Date</label>
+                    <input type="date" id="scheduleDateInput" class="modal-input" required>
+                </div>
+                <div class="modal-time-range">
+                    <div class="modal-form-group">
+                        <label for="scheduleStartTimeInput">🕒 Start Time</label>
+                        <input type="time" id="scheduleStartTimeInput" class="modal-input" required>
+                    </div>
+                    <span class="modal-time-separator">to</span>
+                    <div class="modal-form-group">
+                        <label for="scheduleEndTimeInput">🕒 End Time</label>
+                        <input type="time" id="scheduleEndTimeInput" class="modal-input" required>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeScheduleModal()">Cancel</button>
+                    <button type="submit" class="btn-modal-confirm">Confirm Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+    </script>
+    <script src="../js/session-request.js?v=1.2"></script>
+</body>
+</html>

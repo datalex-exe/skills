@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarterLearn - Live Session Call</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/session-room.css">
+    <!-- Jitsi Meet IFrame API -->
+    <script src="https://meet.jit.si/external_api.js"></script>
+</head>
+<body>
+    <div class="session-room-wrapper">
+        <!-- Room Header Bar -->
+        <header class="room-header">
+            <div class="room-header-left">
+                <img src="" id="partnerAvatar" class="partner-call-avatar">
+                <div class="room-session-info">
+                    <h2 id="partnerName">Connecting...</h2>
+                    <p id="skillName">Topic: Loading Skill...</p>
+                </div>
+            </div>
+            <!-- Session Duration Timer -->
+            <div class="room-timer-block">
+                <span class="timer-dot">🔴</span>
+                <span class="timer-lbl">Duration:</span>
+                <span class="timer-number" id="sessionTimer">00:00</span>
+            </div>
+            <div class="room-header-right">
+                <button class="btn-room-back" onclick="backToSessions()">Exit Call Room</button>
+            </div>
+        </header>
+
+        <!-- Main Room Body Split Grid -->
+        <div class="room-main-body">
+            <!-- Left Frame: Jitsi Meet IFrame Container -->
+            <div class="video-call-pane" id="meetContainer">
+                <div class="call-connecting-state" id="connectingState">
+                    <div class="spinner"></div>
+                    <p>Initializing Barter Video Call Room...</p>
+                </div>
+            </div>
+
+            <!-- Right Frame: Side Chat & Session Info Details -->
+            <aside class="room-side-panel">
+                <!-- Info Section -->
+                <div class="panel-section info-section">
+                    <h3 class="panel-section-title">👤 Swap Information</h3>
+                    <div class="swap-info-box">
+                        <div class="swap-row">
+                            <span class="lbl">Learner:</span>
+                            <span class="val" id="learnerName">--</span>
+                        </div>
+                        <div class="swap-row">
+                            <span class="lbl">Teacher:</span>
+                            <span class="val" id="teacherName">--</span>
+                        </div>
+                        <div class="swap-row" style="margin-top:0.4rem; border-top: 1px solid var(--border); padding-top:0.4rem;">
+                            <span class="lbl">Time Credit Cost:</span>
+                            <span class="val" style="font-weight:700; color:var(--accent-purple);">1 Credit/hr</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Box Section -->
+                <div class="panel-section chat-section">
+                    <h3 class="panel-section-title">💬 Room Text Chat</h3>
+                    <div class="room-chat-feed" id="roomChatFeed">
+                        <div class="chat-system-msg">Welcome to your Jitsi Barter Session Room chat! Messages sent here are secure and private.</div>
+                    </div>
+                    <form class="room-chat-input-row" onsubmit="sendRoomMessage(event)">
+                        <input type="text" id="roomChatInput" placeholder="Type a message..." autocomplete="off">
+                        <button type="submit" class="btn-room-send">✈️</button>
+                    </form>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Room Controls Footer Footer -->
+        <footer class="room-footer-controls">
+            <div class="center-controls">
+                <button class="btn-end-session" onclick="confirmEndSession()">🔴 End Barter Session</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="../js/session-room.js?v=1.1"></script>
+</body>
+</html>
