@@ -13,4 +13,8 @@ router.get('/session-requests', profileController.getSessionRequests);
 router.post('/session-requests', profileController.createSessionRequest);
 router.post('/session-requests/update', profileController.updateSessionRequestStatus);
 
+// Virtual Video Sessions routes
+router.get('/active-sessions', profileController.getActiveSessions);
+router.get('/session-details', profileController.getSessionDetails);
+
 module.exports = router;
