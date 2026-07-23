@@ -1,29 +1,184 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-// Ensure the database directory exists
-const dbPath = path.resolve(__dirname, '..', process.env.DB_PATH || '../database/skill_for_skill.db');
-const dbDir = path.dirname(dbPath);
+let db;
+let usingMock = false;
 
-if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+// Mock database definition
+class MockDatabase {
+    constructor() {
+        this.users = [];
+        this.lastId = 0;
+        console.log("ℹ️ Mock in-memory database initialized.");
+    }
+    
+    serialize(callback) {
+        callback();
+    }
+    
+    run(sql, params, callback) {
+        try {
+            if (sql.startsWith("ALTER TABLE") || sql.startsWith("CREATE TABLE")) {
+                if (callback) callback(null);
+                return;
+            }
+            if (sql.startsWith("INSERT INTO")) {
+                this.lastId++;
+                const newUser = {
+                    id: this.lastId,
+                    first_name: params[0],
+                    last_name: params[1],
+                    email: params[2],
+                    username: params[3],
+                    role: params[4],
+                    password: params[5],
+                    bio: '',
+                    avatar: '',
+                    skills_teach: '',
+                    skills_learn: '',
+                    credits_earned: 15,
+                    skills_taught_count: 0,
+                    hours_learned: 0
+                };
+                this.users.push(newUser);
+                if (callback) callback.call({ lastID: this.lastId, changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("UPDATE users")) {
+                if (sql.includes("first_name = ?")) {
+                    const id = params[6];
+                    const user = this.users.find(u => u.id === id);
+                    if (user) {
+                        user.first_name = params[0];
+                        user.last_name = params[1];
+                        user.bio = params[2];
+                        user.avatar = params[3];
+                        user.skills_teach = params[4];
+                        user.skills_learn = params[5];
+                    }
+                } else if (sql.includes("skills_taught_count = ?")) {
+                    const id = params[2];
+                    const user = this.users.find(u => u.id === id);
+                    if (user) {
+                        user.credits_earned = params[0];
+                        user.skills_taught_count = params[1];
+                    }
+                } else if (sql.includes("hours_learned = ?")) {
+                    const id = params[2];
+                    const user = this.users.find(u => u.id === id);
+                    if (user) {
+                        user.credits_earned = params[0];
+                        user.hours_learned = params[1];
+                    }
+                } else if (sql.includes("credits_earned = ?")) {
+                    const id = params[1];
+                    const user = this.users.find(u => u.id === id);
+                    if (user) {
+                        user.credits_earned = params[0];
+                    }
+                }
+                if (callback) callback.call({ changes: 1 }, null);
+                return;
+            }
+            if (callback) callback(null);
+        } catch (err) {
+            if (callback) callback(err);
+        }
+    }
+    
+    get(sql, params, callback) {
+        try {
+            if (sql.includes("email = ?")) {
+                const user = this.users.find(u => u.email === params[0]);
+                callback(null, user || null);
+                return;
+            }
+            if (sql.includes("id = ?")) {
+                const user = this.users.find(u => u.id === params[0]);
+                callback(null, user || null);
+                return;
+            }
+            callback(null, null);
+        } catch (err) {
+            callback(err, null);
+        }
+    }
+    
+    all(sql, params, callback) {
+        try {
+            if (sql.includes("id != ?")) {
+                let list = this.users.filter(u => u.id !== params[0]);
+                if (params.length > 1) {
+                    const q = params[1].replace(/%/g, '').toLowerCase();
+                    if (q) {
+                        list = list.filter(u => 
+                            u.first_name.toLowerCase().includes(q) ||
+                            u.last_name.toLowerCase().includes(q) ||
+                            u.username.toLowerCase().includes(q) ||
+                            u.skills_teach.toLowerCase().includes(q) ||
+                            u.skills_learn.toLowerCase().includes(q)
+                        );
+                    }
+                }
+                callback(null, list);
+                return;
+            }
+            callback(null, []);
+        } catch (err) {
+            callback(err, null);
+        }
+    }
 }
 
-// Connect to SQLite database
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('❌ Error connecting to SQLite database:', err.message);
-    } else {
-        console.log('📦 Connected to SQLite database at:', dbPath);
-        initializeDatabase();
+try {
+    const sqlite3 = require('sqlite3').verbose();
+    const dbPath = path.resolve(__dirname, '..', process.env.DB_PATH || '../database/skill_for_skill.db');
+    const dbDir = path.dirname(dbPath);
+
+    let finalPath = dbPath;
+    
+    // Check if db path directory can be created/written
+    try {
+        if (!fs.existsSync(dbDir)) {
+            fs.mkdirSync(dbDir, { recursive: true });
+        }
+    } catch (writeErr) {
+        console.warn('⚠️ Read-only filesystem or path error. Falling back to in-memory SQLite database:', writeErr.message);
+        finalPath = ':memory:';
     }
-});
+
+    db = new sqlite3.Database(finalPath, (err) => {
+        if (err) {
+            console.error('❌ Error opening SQLite database file. Falling back to in-memory database:', err.message);
+            db = new sqlite3.Database(':memory:', (inMemErr) => {
+                if (inMemErr) {
+                    console.error('❌ In-memory SQLite failed. Loading mock DB:', inMemErr.message);
+                    loadMock();
+                } else {
+                    console.log('📦 Connected to in-memory SQLite database.');
+                    initializeDatabase();
+                }
+            });
+        } else {
+            console.log(`📦 Connected to SQLite database at: ${finalPath}`);
+            initializeDatabase();
+        }
+    });
+
+} catch (loadErr) {
+    console.error('❌ sqlite3 native module failed to load. Falling back to pure in-memory JS database.', loadErr.message);
+    loadMock();
+}
+
+function loadMock() {
+    usingMock = true;
+    db = new MockDatabase();
+}
 
 function initializeDatabase() {
+    if (usingMock) return;
     db.serialize(() => {
-        // Create users table if not exists
         db.run(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +211,7 @@ function initializeDatabase() {
 }
 
 function runMigrations() {
+    if (usingMock) return;
     const columns = [
         { name: 'bio', type: "TEXT DEFAULT ''" },
         { name: 'avatar', type: "TEXT DEFAULT ''" },
@@ -70,7 +226,6 @@ function runMigrations() {
 
     for (const col of columns) {
         db.run(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`, (err) => {
-            // Ignore duplicate column name error in SQLite
             if (err && !err.message.includes('duplicate column name')) {
                 console.error(`❌ Migration Error adding ${col.name}:`, err.message);
             }
@@ -78,13 +233,16 @@ function runMigrations() {
     }
 }
 
-// Helper utility for promise-based database operations
 const dbQuery = {
     run(sql, params = []) {
         return new Promise((resolve, reject) => {
             db.run(sql, params, function (err) {
                 if (err) reject(err);
-                else resolve({ id: this.lastID, changes: this.changes });
+                else {
+                    const lastID = this ? this.lastID : undefined;
+                    const changes = this ? this.changes : undefined;
+                    resolve({ id: lastID, changes: changes });
+                }
             });
         });
     },
