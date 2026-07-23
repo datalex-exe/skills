@@ -10,7 +10,7 @@ let secondsElapsed = 0;
 let currentSession = null;
 let userSessionInfo = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // 1. Sync User info
     userSessionInfo = JSON.parse(localStorage.getItem('user'));
     if (!userSessionInfo) {
@@ -29,9 +29,23 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // 3. Load Session from localStorage
-    const sessionsList = JSON.parse(localStorage.getItem("session_requests")) || [];
-    currentSession = sessionsList.find(s => s.id == sessionId);
+    // 3. Load Session from backend SQLite
+    try {
+        const response = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': userSessionInfo.id
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            currentSession = data.requests.find(s => s.id == sessionId);
+        }
+    } catch (err) {
+        console.error("Error loading session:", err);
+        const sessionsList = JSON.parse(localStorage.getItem("session_requests")) || [];
+        currentSession = sessionsList.find(s => s.id == sessionId);
+    }
 
     if (!currentSession) {
         alert("Session record not found.");
@@ -181,7 +195,7 @@ async function confirmEndSession() {
     // Determine type:
     // If outgoing request -> You are Learner (sessionType = 'learn')
     // If incoming request -> You are Teacher (sessionType = 'teach')
-    const isOutgoing = currentSession.senderId === userSessionInfo.id;
+    const isOutgoing = currentSession.senderId == userSessionInfo.id;
     const sessionType = isOutgoing ? "learn" : "teach";
     const partnerNameVal = isOutgoing ? currentSession.recipientName : currentSession.senderName;
 
@@ -195,7 +209,8 @@ async function confirmEndSession() {
             body: JSON.stringify({
                 sessionType: sessionType,
                 partnerName: partnerNameVal,
-                skillName: currentSession.skill
+                skillName: currentSession.skill,
+                sessionId: currentSession.id
             })
         });
 
@@ -204,7 +219,7 @@ async function confirmEndSession() {
         if (response.ok && data.success) {
             // Update local storage session list item state to completed
             const sessionsList = JSON.parse(localStorage.getItem("session_requests")) || [];
-            const index = sessionsList.findIndex(s => s.id === currentSession.id);
+            const index = sessionsList.findIndex(s => s.id == currentSession.id);
             if (index !== -1) {
                 sessionsList[index].status = "completed";
                 localStorage.setItem("session_requests", JSON.stringify(sessionsList));
