@@ -213,29 +213,43 @@ function submitReview(e) {
     alert(`Feedback submitted successfully! Thanks for reviewing ${partnerName}.`);
 }
 
-// Fetch barter partners from localStorage session requests (only those with whom a session has started/accepted or completed)
-function fetchBarterPartners() {
+// Fetch barter partners from backend (only those with whom a session has started/accepted or completed)
+async function fetchBarterPartners() {
     const partnerSelect = document.getElementById("partnerSelect");
     if (!partnerSelect) return;
 
-    try {
-        const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
-        
-        // Filter sessions that are accepted (started/scheduled) or completed
-        const activePartners = sessions
-            .filter(s => s.status === 'accepted' || s.status === 'completed')
-            .map(s => s.name);
-            
-        // Get unique names
-        const uniquePartners = [...new Set(activePartners)];
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (!currentUser) return;
 
-        partnerSelect.innerHTML = '<option value="" disabled selected>Choose partner...</option>';
-        if (uniquePartners.length > 0) {
-            uniquePartners.forEach(name => {
-                partnerSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            });
+    try {
+        const response = await fetch('/api/profile/session-requests', {
+            method: 'GET',
+            headers: {
+                'X-User-Id': currentUser.id
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            const sessions = data.requests;
+            
+            // Filter sessions that are accepted (started/scheduled) or completed
+            const activePartners = sessions
+                .filter(s => s.status === 'accepted' || s.status === 'completed')
+                .map(s => s.recipientId == currentUser.id ? s.senderName : s.recipientName);
+                
+            // Get unique names
+            const uniquePartners = [...new Set(activePartners)];
+
+            partnerSelect.innerHTML = '<option value="" disabled selected>Choose partner...</option>';
+            if (uniquePartners.length > 0) {
+                uniquePartners.forEach(name => {
+                    partnerSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            } else {
+                partnerSelect.innerHTML += '<option value="" disabled>No eligible partners found</option>';
+            }
         }
-    } catch (error) {
-        console.error('Error fetching barter partners from session requests:', error);
+    } catch (e) {
+        console.error("Error fetching barter partners:", e);
     }
 }
