@@ -2,6 +2,8 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+const dbInstanceId = "db_" + Date.now() + "_" + Math.floor(Math.random() * 1000000);
+
 let db;
 let usingMock = false;
 
@@ -264,4 +266,4 @@ const dbQuery = {
     }
 };
 
-module.exports = { db, dbQuery };
+module.exports = { db, dbQuery, dbInstanceId };
