@@ -5,11 +5,32 @@
     }
 })();
 
+// Synchronously/Asynchronously verify database instance to clear stale requests on server restart
+function checkDbStatus() {
+    fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const localDbId = localStorage.getItem("db_instance_id");
+                if (localDbId && localDbId !== data.dbInstanceId) {
+                    console.log("🔄 Database reset detected. Resetting local session requests...");
+                    localStorage.removeItem("session_requests");
+                    window.location.reload();
+                }
+                localStorage.setItem("db_instance_id", data.dbInstanceId);
+            }
+        })
+        .catch(err => console.warn("Could not contact status endpoint:", err));
+}
+
 let activeSessionsTab = "upcoming";
 
 const defaultRequests = [];
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. Check Database instance status
+    checkDbStatus();
+
     // 1. Sync User Header info
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
@@ -166,7 +187,7 @@ function renderMySessions() {
 // Redirect to Jitsi Session call room passing session ID
 function startSession(sessionId) {
     const sessions = JSON.parse(localStorage.getItem("session_requests")) || [];
-    const session = sessions.find(s => s.id === sessionId);
+    const session = sessions.find(s => s.id == sessionId);
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
     if (session && currentUser && session.senderId === currentUser.id) {
