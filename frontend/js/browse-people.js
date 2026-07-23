@@ -23,88 +23,6 @@ function checkDbStatus() {
         .catch(err => console.warn("Could not contact status endpoint:", err));
 }
 
-// Mock Data for Barter Learn Users
-const mockPeople = [
-    {
-        id: 101,
-        firstName: "Sarah",
-        lastName: "Jenkins",
-        username: "sarahj",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "UI/UX Designer with 4 years of experience. Loving to teach design principles, wireframing, and Figma secrets.",
-        categories: ["Design"],
-        rating: 4.9,
-        skillsTeach: ["UI/UX Design", "Figma", "Wireframing"],
-        skillsLearn: ["JavaScript", "Python"],
-        bestMatch: true
-    },
-    {
-        id: 102,
-        firstName: "Mateo",
-        lastName: "Silva",
-        username: "mateo_codes",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "Senior backend developer specializing in Python, SQL, and database optimizations. Let's trade code queries!",
-        categories: ["Technology"],
-        rating: 4.8,
-        skillsTeach: ["Python", "SQLite", "PostgreSQL"],
-        skillsLearn: ["Acoustic Guitar", "French"],
-        bestMatch: false
-    },
-    {
-        id: 103,
-        firstName: "Emily",
-        lastName: "Chen",
-        username: "emily_c",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "Native Mandarin speaker, professional translator, and language trainer. Interactive conversational tutor.",
-        categories: ["Languages"],
-        rating: 4.9,
-        skillsTeach: ["Mandarin", "Chinese Culture"],
-        skillsLearn: ["React", "CSS Transitions"],
-        bestMatch: true
-    },
-    {
-        id: 104,
-        firstName: "Carlos",
-        lastName: "Mendez",
-        username: "carlos_music",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "Guitarist and composer. Teaching acoustic, electric, and basic music theory classes. All skill levels welcome!",
-        categories: ["Music"],
-        rating: 4.7,
-        skillsTeach: ["Acoustic Guitar", "Music Theory"],
-        skillsLearn: ["Web Design", "SEO Basics"],
-        bestMatch: false
-    },
-    {
-        id: 105,
-        firstName: "Jessica",
-        lastName: "Taylor",
-        username: "jess_biz",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "Digital marketer and business strategist. Learn how to launch ads, write copy, and grow social media channels.",
-        categories: ["Business"],
-        rating: 4.6,
-        skillsTeach: ["Digital Marketing", "SEO", "Copywriting"],
-        skillsLearn: ["JavaScript", "HTML/CSS"],
-        bestMatch: false
-    },
-    {
-        id: 106,
-        firstName: "Arjun",
-        lastName: "Mehta",
-        username: "arjun_dev",
-        avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=120&h=120&q=80",
-        bio: "Full stack engineer. I teach React development, node JS setups, and API building integrations.",
-        categories: ["Technology"],
-        rating: 4.9,
-        skillsTeach: ["React", "NodeJS", "Web Development"],
-        skillsLearn: ["Figma", "Digital Marketing"],
-        bestMatch: true
-    }
-];
-
 let selectedCategory = "all";
 let activeProfilesList = [];
 let savedRequests = [];
@@ -142,8 +60,8 @@ async function fetchProfiles(searchQuery = "") {
             savedRequests = reqsData.requests;
         }
     } catch (err) {
-        console.warn("Could not fetch session requests from backend, falling back to local storage cache:", err);
-        savedRequests = JSON.parse(localStorage.getItem("session_requests")) || [];
+        console.warn("Could not fetch session requests from backend:", err);
+        savedRequests = [];
     }
 
     try {
@@ -155,36 +73,17 @@ async function fetchProfiles(searchQuery = "") {
         });
         
         const data = await response.json();
-        if (response.ok && data.success && data.profiles && data.profiles.length > 0) {
+        if (response.ok && data.success && data.profiles) {
             activeProfilesList = data.profiles;
         } else {
-            fallbackSearch(searchQuery);
+            activeProfilesList = [];
         }
     } catch (e) {
-        console.log("Using front-end mock fallback search due to:", e.message);
-        fallbackSearch(searchQuery);
+        console.error("Error fetching profiles:", e);
+        activeProfilesList = [];
     }
 
     renderPeople();
-}
-
-function fallbackSearch(query) {
-    if (!query) {
-        activeProfilesList = [...mockPeople];
-        return;
-    }
-    const cleanQuery = query.toLowerCase().trim();
-    activeProfilesList = mockPeople.filter(person => {
-        const fullName = `${person.firstName} ${person.lastName}`.toLowerCase();
-        const username = person.username.toLowerCase();
-        const teaches = person.skillsTeach.join(" ").toLowerCase();
-        const learns = person.skillsLearn.join(" ").toLowerCase();
-
-        return fullName.includes(cleanQuery) || 
-               username.includes(cleanQuery) || 
-               teaches.includes(cleanQuery) || 
-               learns.includes(cleanQuery);
-    });
 }
 
 // Category filtering selection
