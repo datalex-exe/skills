@@ -8,10 +8,15 @@ let db;
 let usingMock = false;
 
 // Mock database definition
+// Mock database definition
 class MockDatabase {
     constructor() {
         this.users = [];
         this.lastId = 0;
+        this.sessionRequests = [];
+        this.requestsLastId = 0;
+        this.sessions = [];
+        this.sessionsLastId = 0;
         console.log("ℹ️ Mock in-memory database initialized.");
     }
     
@@ -25,7 +30,7 @@ class MockDatabase {
                 if (callback) callback(null);
                 return;
             }
-            if (sql.startsWith("INSERT INTO")) {
+            if (sql.startsWith("INSERT INTO users")) {
                 this.lastId++;
                 const newUser = {
                     id: this.lastId,
@@ -41,43 +46,123 @@ class MockDatabase {
                     skills_learn: '',
                     credits_earned: 15,
                     skills_taught_count: 0,
-                    hours_learned: 0
+                    hours_learned: 0,
+                    recent_activity: '[]',
+                    achievements: '[]'
                 };
                 this.users.push(newUser);
                 if (callback) callback.call({ lastID: this.lastId, changes: 1 }, null);
                 return;
             }
+            if (sql.startsWith("INSERT INTO session_requests")) {
+                this.requestsLastId++;
+                const newReq = {
+                    id: this.requestsLastId,
+                    sender_id: Number(params[0]),
+                    sender_name: params[1],
+                    sender_avatar: params[2],
+                    recipient_id: Number(params[3]),
+                    recipient_name: params[4],
+                    recipient_avatar: params[5],
+                    skill: params[6],
+                    date: params[7],
+                    time: params[8],
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                };
+                this.sessionRequests.push(newReq);
+                if (callback) callback.call({ lastID: this.requestsLastId, changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("INSERT INTO sessions")) {
+                this.sessionsLastId++;
+                const newSession = {
+                    id: this.sessionsLastId,
+                    request_id: Number(params[0]),
+                    sender_id: Number(params[1]),
+                    recipient_id: Number(params[2]),
+                    skill: params[3],
+                    date: params[4],
+                    time: params[5],
+                    room_id: params[6],
+                    status: params[7] || 'scheduled',
+                    created_at: new Date().toISOString()
+                };
+                this.sessions.push(newSession);
+                if (callback) callback.call({ lastID: this.sessionsLastId, changes: 1 }, null);
+                return;
+            }
             if (sql.startsWith("UPDATE users")) {
                 if (sql.includes("first_name = ?")) {
-                    const id = params[6];
-                    const user = this.users.find(u => u.id === id);
+                    const id = params[9];
+                    const user = this.users.find(u => u.id == id);
                     if (user) {
                         user.first_name = params[0];
                         user.last_name = params[1];
                         user.bio = params[2];
                         user.avatar = params[3];
-                        user.skills_teach = params[4];
-                        user.skills_learn = params[5];
+                        user.role = params[4];
+                        user.skills_teach = params[5];
+                        user.skills_learn = params[6];
+                        user.recent_activity = params[7];
+                        user.password = params[8];
+                    }
+                } else if (sql.includes("credits_earned = credits_earned + ?")) {
+                    const id = params[2];
+                    const user = this.users.find(u => u.id == id);
+                    if (user) {
+                        user.credits_earned = (user.credits_earned || 0) + Number(params[0]);
+                        user.recent_activity = params[1];
                     }
                 } else if (sql.includes("skills_taught_count = ?")) {
                     const id = params[2];
-                    const user = this.users.find(u => u.id === id);
+                    const user = this.users.find(u => u.id == id);
                     if (user) {
                         user.credits_earned = params[0];
                         user.skills_taught_count = params[1];
                     }
                 } else if (sql.includes("hours_learned = ?")) {
                     const id = params[2];
-                    const user = this.users.find(u => u.id === id);
+                    const user = this.users.find(u => u.id == id);
                     if (user) {
                         user.credits_earned = params[0];
                         user.hours_learned = params[1];
                     }
                 } else if (sql.includes("credits_earned = ?")) {
                     const id = params[1];
-                    const user = this.users.find(u => u.id === id);
+                    const user = this.users.find(u => u.id == id);
                     if (user) {
                         user.credits_earned = params[0];
+                    }
+                }
+                if (callback) callback.call({ changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("UPDATE session_requests")) {
+                if (sql.includes("status = ?, date = ?, time = ?")) {
+                    const id = params[3];
+                    const req = this.sessionRequests.find(r => r.id == id);
+                    if (req) {
+                        req.status = params[0];
+                        req.date = params[1];
+                        req.time = params[2];
+                    }
+                } else if (sql.includes("status = ?")) {
+                    const id = params[1];
+                    const req = this.sessionRequests.find(r => r.id == id);
+                    if (req) {
+                        req.status = params[0];
+                    }
+                }
+                if (callback) callback.call({ changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("UPDATE sessions")) {
+                if (sql.includes("status = ?")) {
+                    const id = params[1];
+                    const s = this.sessions.find(x => x.id == id || x.request_id == id);
+                    if (s) {
+                        s.status = params[0];
                     }
                 }
                 if (callback) callback.call({ changes: 1 }, null);
@@ -91,15 +176,36 @@ class MockDatabase {
     
     get(sql, params, callback) {
         try {
-            if (sql.includes("email = ?")) {
-                const user = this.users.find(u => u.email === params[0]);
-                callback(null, user || null);
-                return;
+            if (sql.includes("FROM users")) {
+                if (sql.includes("email = ?")) {
+                    const user = this.users.find(u => u.email === params[0]);
+                    callback(null, user || null);
+                    return;
+                }
+                if (sql.includes("id = ?")) {
+                    const user = this.users.find(u => u.id == params[0]);
+                    callback(null, user || null);
+                    return;
+                }
             }
-            if (sql.includes("id = ?")) {
-                const user = this.users.find(u => u.id === params[0]);
-                callback(null, user || null);
-                return;
+            if (sql.includes("FROM session_requests")) {
+                if (sql.includes("id = ?")) {
+                    const req = this.sessionRequests.find(r => r.id == params[0]);
+                    callback(null, req || null);
+                    return;
+                }
+            }
+            if (sql.includes("FROM sessions")) {
+                if (sql.includes("request_id = ? OR id = ?")) {
+                    const s = this.sessions.find(x => x.request_id == params[2] || x.id == params[3]);
+                    callback(null, s || null);
+                    return;
+                }
+                if (sql.includes("id = ?")) {
+                    const s = this.sessions.find(x => x.id == params[0]);
+                    callback(null, s || null);
+                    return;
+                }
             }
             callback(null, null);
         } catch (err) {
@@ -109,22 +215,44 @@ class MockDatabase {
     
     all(sql, params, callback) {
         try {
-            if (sql.includes("id != ?")) {
-                let list = this.users.filter(u => u.id !== params[0]);
-                if (params.length > 1) {
-                    const q = params[1].replace(/%/g, '').toLowerCase();
-                    if (q) {
-                        list = list.filter(u => 
-                            u.first_name.toLowerCase().includes(q) ||
-                            u.last_name.toLowerCase().includes(q) ||
-                            u.username.toLowerCase().includes(q) ||
-                            u.skills_teach.toLowerCase().includes(q) ||
-                            u.skills_learn.toLowerCase().includes(q)
-                        );
+            if (sql.includes("FROM users")) {
+                if (sql.includes("id != ?")) {
+                    let list = this.users.filter(u => u.id != params[0]);
+                    if (params.length > 1) {
+                        const q = params[1].replace(/%/g, '').toLowerCase();
+                        if (q) {
+                            list = list.filter(u => 
+                                u.first_name.toLowerCase().includes(q) ||
+                                u.last_name.toLowerCase().includes(q) ||
+                                u.username.toLowerCase().includes(q) ||
+                                u.skills_teach.toLowerCase().includes(q) ||
+                                u.skills_learn.toLowerCase().includes(q)
+                            );
+                        }
                     }
+                    callback(null, list);
+                    return;
                 }
-                callback(null, list);
+                callback(null, this.users);
                 return;
+            }
+            if (sql.includes("FROM session_requests")) {
+                if (sql.includes("sender_id = ? OR recipient_id = ?")) {
+                    const list = this.sessionRequests.filter(r => r.sender_id == params[0] || r.recipient_id == params[1]);
+                    list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    callback(null, list);
+                    return;
+                }
+            }
+            if (sql.includes("FROM sessions")) {
+                if (sql.includes("sender_id = ? OR recipient_id = ?")) {
+                    let list = this.sessions.filter(s => s.sender_id == params[0] || s.recipient_id == params[1]);
+                    if (sql.includes("status IN")) {
+                        list = list.filter(s => s.status === 'scheduled' || s.status === 'active');
+                    }
+                    callback(null, list);
+                    return;
+                }
             }
             callback(null, []);
         } catch (err) {
@@ -139,7 +267,7 @@ try {
     const dbDir = path.dirname(dbPath);
 
     let finalPath = dbPath;
-    
+
     // Check if db path directory can be created/written
     try {
         if (!fs.existsSync(dbDir)) {
@@ -230,6 +358,27 @@ function initializeDatabase() {
                 console.error('❌ Error creating session_requests table:', err.message);
             } else {
                 console.log('✔️ session_requests table initialized successfully.');
+            }
+        });
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id INTEGER UNIQUE,
+                sender_id INTEGER NOT NULL,
+                recipient_id INTEGER NOT NULL,
+                skill TEXT NOT NULL,
+                date TEXT NOT NULL,
+                time TEXT NOT NULL,
+                room_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'scheduled',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `, (err) => {
+            if (err) {
+                console.error('❌ Error creating sessions table:', err.message);
+            } else {
+                console.log('✔️ sessions table initialized successfully.');
             }
         });
     });
