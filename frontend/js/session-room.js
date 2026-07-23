@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 3. Load Session from localStorage
     const sessionsList = JSON.parse(localStorage.getItem("session_requests")) || [];
-    currentSession = sessionsList.find(s => s.id === sessionId);
+    currentSession = sessionsList.find(s => s.id == sessionId);
 
     if (!currentSession) {
         alert("Session record not found.");
