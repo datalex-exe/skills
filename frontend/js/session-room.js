@@ -1,5 +1,5 @@
 // Initialize Dark Mode theme from localStorage
-(function() {
+(function () {
     if (localStorage.getItem("dark_theme") === "true") {
         document.body.classList.add("dark-theme");
     }
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 3. Load Session from backend SQLite
     try {
-        const response = await fetch('/api/profile/session-requests', {
+        const response = await fetch(`/api/profile/session-details?id=${sessionId}`, {
             method: 'GET',
             headers: {
                 'X-User-Id': userSessionInfo.id
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         const data = await response.json();
         if (response.ok && data.success) {
-            currentSession = data.requests.find(s => s.id == sessionId);
+            currentSession = data.session;
         }
     } catch (err) {
         console.error("Error loading session:", err);
@@ -90,9 +90,8 @@ function initJitsiCall(sessionId) {
         return;
     }
 
-    // Create unique room name string
-    const partnerNameVal = currentSession.senderId === userSessionInfo.id ? currentSession.recipientName : currentSession.senderName;
-    const sanitizedRoom = `BarterLearn_Room_${sessionId}_${partnerNameVal.replace(/\s+/g, '_')}`;
+    // Create unique room name string identical for both sender and recipient
+    const sanitizedRoom = currentSession.roomId || `BarterLearn_Room_${sessionId}`;
     const domain = "meet.jit.si";
 
     const options = {
@@ -246,11 +245,11 @@ async function confirmEndSession() {
 function loadMockVideoCall() {
     // Hide spinner
     document.getElementById("connectingState").style.display = "none";
-    
+
     const isOutgoing = currentSession.senderId === userSessionInfo.id;
     const partnerNameVal = isOutgoing ? currentSession.recipientName : currentSession.senderName;
     const partnerAvatarVal = isOutgoing ? currentSession.recipientAvatar : currentSession.senderAvatar;
-    
+
     const meetContainer = document.querySelector('#meetContainer');
     meetContainer.innerHTML = `
         <div class="mock-video-grid">
@@ -274,7 +273,7 @@ function loadMockVideoCall() {
             </div>
         </div>
     `;
-    
+
     // Add webcam stream if permission is granted
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
