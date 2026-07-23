@@ -174,7 +174,7 @@ exports.completeSession = async (req, res) => {
             recentActivity = [];
         }
 
-        const textMsg = sessionType === 'teach' 
+        const textMsg = sessionType === 'teach'
             ? `Taught "${skillName}" to ${partnerName}`
             : `Learned "${skillName}" from ${partnerName}`;
 
@@ -361,16 +361,55 @@ exports.updateSessionRequestStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Session request not found.' });
         }
 
-        if (status === 'accepted' && date && time) {
-            await dbQuery.run(
-                `UPDATE session_requests SET status = ?, date = ?, time = ? WHERE id = ?`,
-                [status, date, time, reqId]
-            );
+        if (status === 'accepted') {
+            const finalDate = date || request.date;
+            const finalTime = time || request.time;
+
+            if (date && time) {
+                await dbQuery.run(
+                    `UPDATE session_requests SET status = ?, date = ?, time = ? WHERE id = ?`,
+                    [status, date, time, reqId]
+                );
+            } else {
+                await dbQuery.run(
+                    `UPDATE session_requests SET status = ? WHERE id = ?`,
+                    [status, reqId]
+                );
+            }
+
+            // Generate one unique Jitsi room ID
+            const roomId = `BarterLearn_Room_${reqId}_${Math.random().toString(36).substring(2, 10)}`;
+
+            // Create a session record in SQLite if it does not already exist
+            const existingSession = await dbQuery.get('SELECT id FROM sessions WHERE request_id = ?', [reqId]);
+            if (!existingSession) {
+                await dbQuery.run(
+                    `INSERT INTO sessions (request_id, sender_id, recipient_id, skill, date, time, room_id, status)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')`,
+                    [reqId, request.sender_id, request.recipient_id, request.skill, finalDate, finalTime, roomId]
+                );
+            }
         } else {
             await dbQuery.run(
                 `UPDATE session_requests SET status = ? WHERE id = ?`,
                 [status, reqId]
             );
+
+            // If status is rejected/cancelled, update matching session record status
+            if (status === 'rejected' || status === 'cancelled') {
+                await dbQuery.run(
+                    `UPDATE sessions SET status = ? WHERE request_id = ?`,
+                    [status, reqId]
+                );
+            }
+        }
+
+        // Notify client using global socket handler if bound to app
+        if (req.app && req.app.get('io')) {
+            const io = req.app.get('io');
+            // Notify both sender and receiver of status update
+            io.to(`user_${request.sender_id}`).emit('session_status_update', { reqId, status });
+            io.to(`user_${request.recipient_id}`).emit('session_status_update', { reqId, status });
         }
 
         return res.status(200).json({
@@ -379,6 +418,116 @@ exports.updateSessionRequestStatus = async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Update Session Request Status Error:', error);
+        return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+    }
+};
+
+// Get Scheduled or Active Sessions Controller
+exports.getActiveSessions = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
+        }
+
+        const querySql = `
+            SELECT s.*, 
+                   u1.first_name as sender_first_name, u1.last_name as sender_last_name, u1.avatar as sender_avatar,
+                   u2.first_name as recipient_first_name, u2.last_name as recipient_last_name, u2.avatar as recipient_avatar
+            FROM sessions s
+            JOIN users u1 ON s.sender_id = u1.id
+            JOIN users u2 ON s.recipient_id = u2.id
+            WHERE (s.sender_id = ? OR s.recipient_id = ?) AND s.status IN ('scheduled', 'active')
+            ORDER BY s.created_at DESC
+        `;
+        const list = await dbQuery.all(querySql, [userId, userId]);
+
+        const mappedSessions = list.map(s => {
+            const isOutgoing = s.sender_id == userId;
+            const partnerName = isOutgoing 
+                ? `${s.recipient_first_name} ${s.recipient_last_name}`
+                : `${s.sender_first_name} ${s.sender_last_name}`;
+            const partnerAvatar = isOutgoing ? s.recipient_avatar : s.sender_avatar;
+
+            return {
+                id: s.id,
+                requestId: s.request_id,
+                senderId: s.sender_id,
+                recipientId: s.recipient_id,
+                skill: s.skill,
+                date: s.date,
+                time: s.time,
+                roomId: s.room_id,
+                status: s.status,
+                partnerName,
+                partnerAvatar,
+                isOutgoing
+            };
+        });
+
+        return res.status(200).json({ success: true, sessions: mappedSessions });
+    } catch (error) {
+        console.error('❌ Get Active Sessions Error:', error);
+        return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+    }
+};
+
+// Get Session Details Controller
+exports.getSessionDetails = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        const requestId = req.query.id; // Could be request_id or session_id
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User ID is required in headers.' });
+        }
+        if (!requestId) {
+            return res.status(400).json({ success: false, message: 'Session ID is required.' });
+        }
+
+        const querySql = `
+            SELECT s.*, 
+                   u1.first_name as sender_first_name, u1.last_name as sender_last_name, u1.avatar as sender_avatar,
+                   u2.first_name as recipient_first_name, u2.last_name as recipient_last_name, u2.avatar as recipient_avatar
+            FROM sessions s
+            JOIN users u1 ON s.sender_id = u1.id
+            JOIN users u2 ON s.recipient_id = u2.id
+            WHERE (s.sender_id = ? OR s.recipient_id = ?) AND (s.request_id = ? OR s.id = ?)
+            LIMIT 1
+        `;
+        const session = await dbQuery.get(querySql, [userId, userId, requestId, requestId]);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: 'Session record not found.' });
+        }
+
+        const isOutgoing = session.sender_id == userId;
+        const partnerName = isOutgoing 
+            ? `${session.recipient_first_name} ${session.recipient_last_name}`
+            : `${session.sender_first_name} ${session.sender_last_name}`;
+        const partnerAvatar = isOutgoing ? session.recipient_avatar : session.sender_avatar;
+
+        const result = {
+            id: session.id,
+            requestId: session.request_id,
+            senderId: session.sender_id,
+            recipientId: session.recipient_id,
+            skill: session.skill,
+            date: session.date,
+            time: session.time,
+            roomId: session.room_id,
+            status: session.status,
+            partnerName,
+            partnerAvatar,
+            senderName: `${session.sender_first_name} ${session.sender_last_name}`,
+            recipientName: `${session.recipient_first_name} ${session.recipient_last_name}`,
+            senderAvatar: session.sender_avatar,
+            recipientAvatar: session.recipient_avatar,
+            isOutgoing
+        };
+
+        return res.status(200).json({ success: true, session: result });
+    } catch (error) {
+        console.error('❌ Get Session Details Error:', error);
         return res.status(500).json({ success: false, message: 'An internal server error occurred.' });
     }
 };
