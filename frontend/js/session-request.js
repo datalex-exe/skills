@@ -60,40 +60,6 @@ async function fetchSessionRequests() {
         const data = await response.json();
         if (response.ok && data.success) {
             requests = data.requests;
-            
-            // Seed default incoming requests if this user has no requests at all (sender or receiver) in the DB
-            const hasUserRequests = requests.some(r => r.senderId == user.id || r.recipientId == user.id);
-            if (!hasUserRequests) {
-                const mockIncoming = [
-                    {
-                        id: Date.now() - 1000,
-                        senderId: 999,
-                        senderName: "Anjali Verma",
-                        senderAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
-                        recipientId: user.id,
-                        recipientName: `${user.firstName} ${user.lastName}`,
-                        recipientAvatar: user.avatar || "../images/avatar1.jpg",
-                        skill: "Web Development",
-                        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        time: "14:00 - 15:00",
-                        status: "pending"
-                    },
-                    {
-                        id: Date.now() - 2000,
-                        senderId: 998,
-                        senderName: "Kabir Kapoor",
-                        senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
-                        recipientId: user.id,
-                        recipientName: `${user.firstName} ${user.lastName}`,
-                        recipientAvatar: user.avatar || "../images/avatar1.jpg",
-                        skill: "UI/UX Design",
-                        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        time: "16:00 - 17:00",
-                        status: "pending"
-                    }
-                ];
-                requests.push(...mockIncoming);
-            }
         }
     } catch (err) {
         console.error("Error fetching session requests:", err);
