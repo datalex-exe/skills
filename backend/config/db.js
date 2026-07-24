@@ -17,6 +17,10 @@ class MockDatabase {
         this.requestsLastId = 0;
         this.sessions = [];
         this.sessionsLastId = 0;
+        this.sessionCompletions = [];
+        this.completionsLastId = 0;
+        this.transactions = [];
+        this.transactionsLastId = 0;
         console.log("ℹ️ Mock in-memory database initialized.");
     }
     
@@ -90,6 +94,38 @@ class MockDatabase {
                 };
                 this.sessions.push(newSession);
                 if (callback) callback.call({ lastID: this.sessionsLastId, changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("INSERT INTO session_completions")) {
+                this.completionsLastId++;
+                const newComp = {
+                    id: this.completionsLastId,
+                    session_id: Number(params[0]),
+                    teacher_id: Number(params[1]),
+                    learner_id: Number(params[2]),
+                    skill: params[3],
+                    credits_transferred: params[4] || 1,
+                    completed_at: new Date().toISOString()
+                };
+                this.sessionCompletions.push(newComp);
+                if (callback) callback.call({ lastID: this.completionsLastId, changes: 1 }, null);
+                return;
+            }
+            if (sql.startsWith("INSERT INTO transactions")) {
+                this.transactionsLastId++;
+                const newTx = {
+                    id: this.transactionsLastId,
+                    user_id: Number(params[0]),
+                    partner_id: Number(params[1]),
+                    partner_name: params[2],
+                    session_id: Number(params[3]),
+                    type: params[4],
+                    amount: Number(params[5]),
+                    skill: params[6],
+                    created_at: new Date().toISOString()
+                };
+                this.transactions.push(newTx);
+                if (callback) callback.call({ lastID: this.transactionsLastId, changes: 1 }, null);
                 return;
             }
             if (sql.startsWith("UPDATE users")) {
@@ -207,6 +243,13 @@ class MockDatabase {
                     return;
                 }
             }
+            if (sql.includes("FROM session_completions")) {
+                if (sql.includes("session_id = ?")) {
+                    const comp = this.sessionCompletions.find(c => c.session_id == params[0]);
+                    callback(null, comp || null);
+                    return;
+                }
+            }
             callback(null, null);
         } catch (err) {
             callback(err, null);
@@ -250,6 +293,14 @@ class MockDatabase {
                     if (sql.includes("status IN")) {
                         list = list.filter(s => s.status === 'scheduled' || s.status === 'active');
                     }
+                    callback(null, list);
+                    return;
+                }
+            }
+            if (sql.includes("FROM transactions")) {
+                if (sql.includes("user_id = ?")) {
+                    const list = this.transactions.filter(t => t.user_id == params[0]);
+                    list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                     callback(null, list);
                     return;
                 }
@@ -334,7 +385,6 @@ function initializeDatabase() {
                 console.error('❌ Error creating users table:', err.message);
             } else {
                 console.log('✔️ Database tables initialized successfully.');
-                runMigrations();
             }
         });
 
@@ -351,7 +401,8 @@ function initializeDatabase() {
                 date TEXT NOT NULL,
                 time TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `, (err) => {
             if (err) {
@@ -381,6 +432,45 @@ function initializeDatabase() {
                 console.log('✔️ sessions table initialized successfully.');
             }
         });
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS session_completions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL UNIQUE,
+                teacher_id INTEGER NOT NULL,
+                learner_id INTEGER NOT NULL,
+                skill TEXT NOT NULL,
+                credits_transferred INTEGER DEFAULT 1,
+                completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `, (err) => {
+            if (err) {
+                console.error('❌ Error creating session_completions table:', err.message);
+            } else {
+                console.log('✔️ session_completions table initialized successfully.');
+            }
+        });
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                partner_id INTEGER NOT NULL,
+                partner_name TEXT NOT NULL,
+                session_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                skill TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `, (err) => {
+            if (err) {
+                console.error('❌ Error creating transactions table:', err.message);
+            } else {
+                console.log('✔️ transactions table initialized successfully.');
+                runMigrations();
+            }
+        });
     });
 }
 
@@ -405,6 +495,12 @@ function runMigrations() {
             }
         });
     }
+
+    db.run(`ALTER TABLE session_requests ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            // Column already exists or error
+        }
+    });
 }
 
 const dbQuery = {
