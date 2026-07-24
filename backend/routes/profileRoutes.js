@@ -7,6 +7,7 @@ router.get('/', profileController.getProfile);
 router.get('/search', profileController.searchProfiles);
 router.post('/update', profileController.updateProfile);
 router.post('/complete-session', profileController.completeSession);
+router.get('/transactions', profileController.getTransactions);
 
 // Session Requests routes
 router.get('/session-requests', profileController.getSessionRequests);
