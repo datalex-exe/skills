@@ -1,24 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarterLearn - Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="../css/dashboard.css">
-<base target="_blank">
+    <base target="_blank">
 </head>
+
 <body>
     <!-- SVG Gradients Definition -->
     <svg width="0" height="0" style="position:absolute">
         <defs>
             <linearGradient id="gradientPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#A855F7"/>
-                <stop offset="100%" style="stop-color:#EC4899"/>
+                <stop offset="0%" style="stop-color:#A855F7" />
+                <stop offset="100%" style="stop-color:#EC4899" />
             </linearGradient>
             <linearGradient id="gradientWallet" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#F472B6"/>
-                <stop offset="100%" style="stop-color:#A855F7"/>
+                <stop offset="0%" style="stop-color:#F472B6" />
+                <stop offset="100%" style="stop-color:#A855F7" />
             </linearGradient>
         </defs>
     </svg>
@@ -36,7 +39,7 @@
             <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
         </div>
 
-                        <nav class="sidebar-nav">
+        <nav class="sidebar-nav">
             <a href="dashboard.html" class="nav-item active">
                 <span class="nav-icon">🏠</span>
                 <span>Dashboard</span>
@@ -78,7 +81,7 @@
         <div class="sidebar-illustration">
             <svg viewBox="0 0 180 140" style="width:100%;max-width:180px">
                 <!-- Background glow -->
-                <circle cx="90" cy="70" r="60" fill="url(#grad1)" opacity="0.3"/>
+                <circle cx="90" cy="70" r="60" fill="url(#grad1)" opacity="0.3" />
                 <defs>
                     <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
                         <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
@@ -87,27 +90,27 @@
                 </defs>
                 <!-- Person 1 (left, high five) -->
                 <g transform="translate(30, 40)">
-                    <rect x="15" y="25" width="28" height="45" rx="14" fill="#F59E0B"/>
-                    <circle cx="29" cy="15" r="12" fill="#FDBA74"/>
-                    <path d="M17 10 Q29 0 41 10" fill="#1E293B"/>
-                    <circle cx="25" cy="14" r="1.5" fill="#1E293B"/>
-                    <circle cx="33" cy="14" r="1.5" fill="#1E293B"/>
-                    <path d="M26 20 Q29 23 32 20" stroke="#1E293B" stroke-width="1" fill="none"/>
+                    <rect x="15" y="25" width="28" height="45" rx="14" fill="#F59E0B" />
+                    <circle cx="29" cy="15" r="12" fill="#FDBA74" />
+                    <path d="M17 10 Q29 0 41 10" fill="#1E293B" />
+                    <circle cx="25" cy="14" r="1.5" fill="#1E293B" />
+                    <circle cx="33" cy="14" r="1.5" fill="#1E293B" />
+                    <path d="M26 20 Q29 23 32 20" stroke="#1E293B" stroke-width="1" fill="none" />
                     <!-- Arm raised -->
-                    <rect x="38" y="20" width="20" height="8" rx="4" fill="#F59E0B" transform="rotate(-30 38 20)"/>
-                    <circle cx="56" cy="8" r="6" fill="#FDBA74"/>
+                    <rect x="38" y="20" width="20" height="8" rx="4" fill="#F59E0B" transform="rotate(-30 38 20)" />
+                    <circle cx="56" cy="8" r="6" fill="#FDBA74" />
                 </g>
                 <!-- Person 2 (right, high five) -->
                 <g transform="translate(100, 40)">
-                    <rect x="15" y="25" width="28" height="45" rx="14" fill="#3B82F6"/>
-                    <circle cx="29" cy="15" r="12" fill="#FDBA74"/>
-                    <path d="M17 10 Q29 0 41 10" fill="#1E293B"/>
-                    <circle cx="25" cy="14" r="1.5" fill="#1E293B"/>
-                    <circle cx="33" cy="14" r="1.5" fill="#1E293B"/>
-                    <path d="M26 20 Q29 23 32 20" stroke="#1E293B" stroke-width="1" fill="none"/>
+                    <rect x="15" y="25" width="28" height="45" rx="14" fill="#3B82F6" />
+                    <circle cx="29" cy="15" r="12" fill="#FDBA74" />
+                    <path d="M17 10 Q29 0 41 10" fill="#1E293B" />
+                    <circle cx="25" cy="14" r="1.5" fill="#1E293B" />
+                    <circle cx="33" cy="14" r="1.5" fill="#1E293B" />
+                    <path d="M26 20 Q29 23 32 20" stroke="#1E293B" stroke-width="1" fill="none" />
                     <!-- Arm raised -->
-                    <rect x="0" y="20" width="20" height="8" rx="4" fill="#3B82F6" transform="rotate(30 20 20)"/>
-                    <circle cx="2" cy="8" r="6" fill="#FDBA74"/>
+                    <rect x="0" y="20" width="20" height="8" rx="4" fill="#3B82F6" transform="rotate(30 20 20)" />
+                    <circle cx="2" cy="8" r="6" fill="#FDBA74" />
                 </g>
                 <!-- Stars/sparkles -->
                 <text x="20" y="30" font-size="12" fill="#F59E0B">✨</text>
@@ -144,7 +147,7 @@
                 </div>
                 <button class="icon-btn">
                     🔔
-</button>
+                </button>
                 <button class="icon-btn">
                     💬
                 </button>
@@ -174,39 +177,42 @@
                             <!-- Girl at laptop -->
                             <g transform="translate(60, 20)">
                                 <!-- Body -->
-                                <rect x="25" y="50" width="50" height="55" rx="25" fill="#A855F7"/>
+                                <rect x="25" y="50" width="50" height="55" rx="25" fill="#A855F7" />
                                 <!-- Head -->
-                                <circle cx="50" cy="35" r="22" fill="#FDBA74"/>
+                                <circle cx="50" cy="35" r="22" fill="#FDBA74" />
                                 <!-- Hair -->
-                                <path d="M25 30 Q50 5 75 30 Q78 20 72 12 Q50 0 28 12 Q22 20 25 30" fill="#1E1B4B"/>
-                                <ellipse cx="72" cy="40" rx="8" ry="15" fill="#1E1B4B"/>
+                                <path d="M25 30 Q50 5 75 30 Q78 20 72 12 Q50 0 28 12 Q22 20 25 30" fill="#1E1B4B" />
+                                <ellipse cx="72" cy="40" rx="8" ry="15" fill="#1E1B4B" />
                                 <!-- Face -->
-                                <circle cx="42" cy="32" r="2.5" fill="#1E293B"/>
-                                <circle cx="58" cy="32" r="2.5" fill="#1E293B"/>
-                                <path d="M44 42 Q50 47 56 42" stroke="#1E293B" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                <circle cx="42" cy="32" r="2.5" fill="#1E293B" />
+                                <circle cx="58" cy="32" r="2.5" fill="#1E293B" />
+                                <path d="M44 42 Q50 47 56 42" stroke="#1E293B" stroke-width="2" fill="none"
+                                    stroke-linecap="round" />
                                 <!-- Laptop -->
-                                <rect x="15" y="80" width="70" height="45" rx="6" fill="#60A5FA"/>
-                                <rect x="18" y="83" width="64" height="36" rx="4" fill="#1E1B4B"/>
-                                <circle cx="50" cy="101" r="10" fill="#3B82F6" opacity="0.5"/>
+                                <rect x="15" y="80" width="70" height="45" rx="6" fill="#60A5FA" />
+                                <rect x="18" y="83" width="64" height="36" rx="4" fill="#1E1B4B" />
+                                <circle cx="50" cy="101" r="10" fill="#3B82F6" opacity="0.5" />
                                 <!-- Arms -->
-                                <rect x="20" y="65" width="25" height="10" rx="5" fill="#A855F7" transform="rotate(15 20 65)"/>
-                                <rect x="55" y="65" width="25" height="10" rx="5" fill="#A855F7" transform="rotate(-15 80 65)"/>
+                                <rect x="20" y="65" width="25" height="10" rx="5" fill="#A855F7"
+                                    transform="rotate(15 20 65)" />
+                                <rect x="55" y="65" width="25" height="10" rx="5" fill="#A855F7"
+                                    transform="rotate(-15 80 65)" />
                             </g>
                             <!-- Floating icons -->
-                            <circle cx="30" cy="30" r="14" fill="#3B82F6" opacity="0.9"/>
+                            <circle cx="30" cy="30" r="14" fill="#3B82F6" opacity="0.9" />
                             <text x="23" y="35" font-size="12" fill="#fff">🎓</text>
-                            <circle cx="160" cy="40" r="14" fill="#F59E0B" opacity="0.9"/>
+                            <circle cx="160" cy="40" r="14" fill="#F59E0B" opacity="0.9" />
                             <text x="153" y="45" font-size="12" fill="#fff">&lt;/&gt;</text>
-                            <circle cx="170" cy="100" r="12" fill="#10B981" opacity="0.9"/>
+                            <circle cx="170" cy="100" r="12" fill="#10B981" opacity="0.9" />
                             <text x="164" y="105" font-size="10" fill="#fff">💡</text>
-                            <circle cx="20" cy="110" r="10" fill="#EC4899" opacity="0.9"/>
+                            <circle cx="20" cy="110" r="10" fill="#EC4899" opacity="0.9" />
                             <text x="15" y="114" font-size="8" fill="#fff">⭐</text>
                             <!-- Books -->
-                            <rect x="45" y="125" width="25" height="6" rx="2" fill="#F59E0B"/>
-                            <rect x="48" y="118" width="22" height="6" rx="2" fill="#EC4899"/>
+                            <rect x="45" y="125" width="25" height="6" rx="2" fill="#F59E0B" />
+                            <rect x="48" y="118" width="22" height="6" rx="2" fill="#EC4899" />
                             <!-- Coffee -->
-                            <rect x="130" y="120" width="16" height="20" rx="3" fill="#F97316"/>
-                            <rect x="128" y="117" width="20" height="4" rx="2" fill="#1E1B4B"/>
+                            <rect x="130" y="120" width="16" height="20" rx="3" fill="#F97316" />
+                            <rect x="128" y="117" width="20" height="4" rx="2" fill="#1E1B4B" />
                         </svg>
                     </div>
                 </div>
@@ -222,7 +228,8 @@
                         <div class="stat-footer">
                             <a href="#" class="stat-link">View all →</a>
                             <svg class="stat-sparkline" viewBox="0 0 60 24">
-                                <path d="M0 18 Q10 15 15 12 T30 10 T45 14 T60 6" fill="none" stroke="#A855F7" stroke-width="2"/>
+                                <path d="M0 18 Q10 15 15 12 T30 10 T45 14 T60 6" fill="none" stroke="#A855F7"
+                                    stroke-width="2" />
                             </svg>
                         </div>
                     </div>
@@ -235,7 +242,8 @@
                         <div class="stat-footer">
                             <a href="#" class="stat-link">View all →</a>
                             <svg class="stat-sparkline" viewBox="0 0 60 24">
-                                <path d="M0 16 Q10 14 20 10 T40 12 T60 4" fill="none" stroke="#10B981" stroke-width="2"/>
+                                <path d="M0 16 Q10 14 20 10 T40 12 T60 4" fill="none" stroke="#10B981"
+                                    stroke-width="2" />
                             </svg>
                         </div>
                     </div>
@@ -248,7 +256,8 @@
                         <div class="stat-footer">
                             <a href="#" class="stat-link">View all →</a>
                             <svg class="stat-sparkline" viewBox="0 0 60 24">
-                                <path d="M0 20 Q15 18 25 14 T45 10 T60 4" fill="none" stroke="#F97316" stroke-width="2"/>
+                                <path d="M0 20 Q15 18 25 14 T45 10 T60 4" fill="none" stroke="#F97316"
+                                    stroke-width="2" />
                             </svg>
                         </div>
                     </div>
@@ -261,7 +270,7 @@
                         <div class="stat-footer">
                             <a href="#" class="stat-link">View all →</a>
                             <svg class="stat-sparkline" viewBox="0 0 60 24">
-                                <path d="M0 12 Q10 10 20 8 T40 6 T60 4" fill="none" stroke="#F59E0B" stroke-width="2"/>
+                                <path d="M0 12 Q10 10 20 8 T40 6 T60 4" fill="none" stroke="#F59E0B" stroke-width="2" />
                             </svg>
                         </div>
                     </div>
@@ -277,8 +286,8 @@
                         <div class="progress-circle-wrap">
                             <div class="progress-circle">
                                 <svg viewBox="0 0 100 100" width="100" height="100">
-                                    <circle class="progress-circle-bg" cx="50" cy="50" r="40"/>
-                                    <circle class="progress-circle-bar" cx="50" cy="50" r="40"/>
+                                    <circle class="progress-circle-bg" cx="50" cy="50" r="40" />
+                                    <circle class="progress-circle-bar" cx="50" cy="50" r="40" />
                                 </svg>
                                 <div class="progress-text">
                                     <span class="percent">75%</span>
@@ -288,32 +297,44 @@
                             <div class="skill-list" id="progressSkillList">
                                 <div class="skill-item">
                                     <div class="skill-header">
-                                        <span class="skill-name"><span class="skill-dot purple"></span> Web Development</span>
+                                        <span class="skill-name"><span class="skill-dot purple"></span> Web
+                                            Development</span>
                                         <span class="skill-percent">80%</span>
                                     </div>
-                                    <div class="skill-bar"><div class="skill-bar-fill purple"></div></div>
+                                    <div class="skill-bar">
+                                        <div class="skill-bar-fill purple"></div>
+                                    </div>
                                 </div>
                                 <div class="skill-item">
                                     <div class="skill-header">
-                                        
-<span class="skill-name"><span class="skill-dot pink"></span> UI/UX Design</span>
+
+                                        <span class="skill-name"><span class="skill-dot pink"></span> UI/UX
+                                            Design</span>
                                         <span class="skill-percent">60%</span>
                                     </div>
-                                    <div class="skill-bar"><div class="skill-bar-fill pink"></div></div>
+                                    <div class="skill-bar">
+                                        <div class="skill-bar-fill pink"></div>
+                                    </div>
                                 </div>
                                 <div class="skill-item">
                                     <div class="skill-header">
-                                        <span class="skill-name"><span class="skill-dot orange"></span> Digital Marketing</span>
+                                        <span class="skill-name"><span class="skill-dot orange"></span> Digital
+                                            Marketing</span>
                                         <span class="skill-percent">40%</span>
                                     </div>
-                                    <div class="skill-bar"><div class="skill-bar-fill orange"></div></div>
+                                    <div class="skill-bar">
+                                        <div class="skill-bar-fill orange"></div>
+                                    </div>
                                 </div>
                                 <div class="skill-item">
                                     <div class="skill-header">
-                                        <span class="skill-name"><span class="skill-dot cyan"></span> Python Programming</span>
+                                        <span class="skill-name"><span class="skill-dot cyan"></span> Python
+                                            Programming</span>
                                         <span class="skill-percent">90%</span>
                                     </div>
-                                    <div class="skill-bar"><div class="skill-bar-fill cyan"></div></div>
+                                    <div class="skill-bar">
+                                        <div class="skill-bar-fill cyan"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -342,7 +363,8 @@
                             <div class="activity-item">
                                 <div class="activity-icon purple">💬</div>
                                 <div class="activity-content">
-                                    <div class="activity-text">New message from Anjali Verma<br>Hey! Can we schedule our session for tomorrow?</div>
+                                    <div class="activity-text">New message from Anjali Verma<br>Hey! Can we schedule our
+                                        session for tomorrow?</div>
                                     <div class="activity-time">3h ago</div>
                                 </div>
                             </div>
@@ -422,9 +444,13 @@
                     <div class="wallet-label">Time Credits</div>
                     <div class="wallet-chart">
                         <svg viewBox="0 0 100 100" width="100" height="100">
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="url(#gradientWallet)" stroke-width="8" stroke-linecap="round" stroke-dasharray="200" stroke-dashoffset="50" transform="rotate(-90 50 50)"/>
-                            <text x="50" y="48" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">⏱</text>
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)"
+                                stroke-width="8" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="url(#gradientWallet)" stroke-width="8"
+                                stroke-linecap="round" stroke-dasharray="200" stroke-dashoffset="50"
+                                transform="rotate(-90 50 50)" />
+                            <text x="50" y="48" text-anchor="middle" fill="#fff" font-size="14"
+                                font-weight="700">⏱</text>
                         </svg>
                     </div>
                     <div class="wallet-stats">
@@ -439,7 +465,7 @@
                             <span style="font-weight:700" id="walletSpent">0</span>
                         </div>
                     </div>
-                    <a href="#" class="wallet-link">
+                    <a href="credits.html" class="wallet-link">
                         <span>View Transactions</span>
                         <span>→</span>
                     </a>
@@ -578,4 +604,5 @@
 
     <script src="../js/dashboard.js?v=1.1"></script>
 </body>
-</html>                
+
+</html>
